@@ -677,7 +677,7 @@ button.b-name:hover { background: var(--surface-2); }
 }
 .dsym.plus::after, .face.plus::after { transform: rotate(90deg); }
 .face.plus::before, .face.plus::after, .face.minus::before { box-shadow: inset 0 1px 1px rgba(0,0,0,.45), 0 1px 0 rgba(255,255,255,.35); }
-.dice-stage { position: absolute; inset: 0; z-index: 3; pointer-events: none; overflow: hidden; perspective: 1100px; perspective-origin: 50% 30%; transition: opacity .7s; }
+.dice-stage { position: absolute; inset: 0; z-index: 40; pointer-events: none; overflow: hidden; perspective: 1100px; perspective-origin: 50% 30%; transition: opacity .7s; }
 .dice-stage.fade { opacity: 0; }
 .dice-floor { position: absolute; inset: 0; transform-style: preserve-3d; transform-origin: 50% 60%; transform: rotateX(34deg); }
 .die, .die-shadow { position: absolute; left: 0; top: 0; width: var(--s); height: var(--s); margin: calc(var(--s) / -2) 0 0 calc(var(--s) / -2); will-change: transform; }
@@ -695,6 +695,90 @@ button.b-name:hover { background: var(--surface-2); }
 .dice-banner.show { opacity: 1; transform: translate(-50%, 0); }
 .dice-banner b { display: block; font: 700 46px/1.1 var(--font-head); color: var(--accent); font-variant-numeric: tabular-nums; }
 .dice-banner span { font-size: 12.5px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); white-space: nowrap; }
+/* Портреты и листы персонажей на доске */
+.menu { max-height: calc(100vh - 16px); overflow-y: auto; }
+.menu-note { padding: 8px 10px; color: var(--muted); font-size: 13px; max-width: 260px; }
+.menu .av { width: 24px; height: 24px; }
+.b-rail { right: 14px; top: 14px; flex-direction: column; gap: 6px; padding: 6px; max-height: calc(100% - 190px); }
+.b-rail.hide .rail-list, .b-rail.hide [data-act="sh-cast-menu"] { display: none; }
+.rail-list { display: flex; flex-direction: column; gap: 7px; overflow-y: auto; min-height: 0; scrollbar-width: thin; padding: 1px; }
+.rail-p { position: relative; width: 66px; height: 66px; flex: none; border-radius: var(--radius); overflow: hidden; border: 2px solid var(--border); background: var(--surface-2); display: grid; place-items: center; transition: border-color .12s, transform .08s; }
+.rail-p img { width: 100%; height: 100%; object-fit: cover; object-position: 50% 20%; display: block; }
+.rail-p .ph { font: 700 22px var(--font-head); color: var(--muted); }
+.rail-p .nm { position: absolute; left: 0; right: 0; bottom: 0; padding: 9px 3px 2px; font-size: 10.5px; font-weight: 700; line-height: 1.2; color: #fff; text-align: center; background: linear-gradient(transparent, rgba(0,0,0,.82)); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.rail-p:hover { border-color: var(--muted); transform: translateX(-2px); }
+.rail-p.on { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent-soft); }
+.rail-none { width: 66px; font-size: 11.5px; line-height: 1.3; color: var(--muted); text-align: center; }
+.sh-win { position: absolute; display: flex; flex-direction: column; min-width: 260px; min-height: 140px; max-width: 100%; background: var(--surface); border: 1px solid var(--border); border-radius: calc(var(--radius) + 2px); box-shadow: var(--shadow); overflow: hidden; resize: both; }
+.sh-win.min { height: auto !important; min-height: 0; resize: none; }
+.sh-win.min .sh-body { display: none; }
+.sh-head { display: flex; align-items: center; gap: 8px; padding: 7px 8px 7px 9px; border-bottom: 1px solid var(--border); background: var(--surface-2); cursor: grab; touch-action: none; flex: none; user-select: none; }
+.sh-head:active { cursor: grabbing; }
+.sh-win.min .sh-head { border-bottom: 0; }
+.sh-av { width: 38px; height: 38px; border-radius: var(--radius); object-fit: cover; object-position: 50% 20%; flex: none; background: var(--bg); display: grid; place-items: center; font-weight: 700; font-size: 14px; color: var(--accent); border: 1px solid var(--border); pointer-events: none; }
+.sh-ttl { min-width: 0; flex: 1; display: flex; flex-direction: column; line-height: 1.25; pointer-events: none; }
+.sh-ttl b { font-family: var(--font-head); font-size: 15.5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sh-ttl span { font-size: 11.5px; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sh-body { flex: 1; min-height: 0; overflow-y: auto; padding: 10px 12px 16px; display: flex; flex-direction: column; gap: 14px; user-select: text; -webkit-user-select: text; scrollbar-width: thin; }
+.sh-none { color: var(--muted); font-size: 13.5px; line-height: 1.5; }
+.sh-tpls { display: grid; gap: 8px; }
+.sh-tpl { display: flex; flex-direction: column; gap: 2px; text-align: left; padding: 9px 12px; border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface-2); }
+.sh-tpl:hover { border-color: var(--accent); }
+.sh-tpl span { font-size: 12.5px; color: var(--muted); }
+.sh-secret { display: flex; align-items: center; gap: 7px; padding: 6px 9px; font-size: 12.5px; font-weight: 600; color: var(--muted); border: 1px dashed var(--border); border-radius: var(--radius); text-align: left; }
+.sh-secret svg.i { width: 13px; height: 13px; flex: none; }
+.sh-secret:hover { color: var(--text); border-color: var(--muted); }
+.sh-block { display: flex; flex-direction: column; gap: 3px; }
+h4.sh-title { font: 700 11.5px/1.3 var(--font-body, inherit); letter-spacing: .09em; text-transform: uppercase; color: var(--accent); padding-bottom: 4px; margin-bottom: 2px; border-bottom: 1px solid var(--border); }
+.sh-bhead { display: flex; align-items: center; gap: 2px; padding-bottom: 4px; margin-bottom: 2px; border-bottom: 1px solid var(--border); }
+.sh-bhead .sh-title { flex: 1; font-weight: 700; color: var(--accent); }
+.sh-row { display: flex; align-items: flex-start; gap: 6px; min-height: 28px; }
+.sh-row.rated, .sh-row.track { align-items: center; }
+.sh-in { min-width: 0; font: inherit; font-size: 14px; line-height: 1.4; color: var(--text); background: transparent; border: 1px solid transparent; border-radius: 4px; padding: 3px 5px; margin: 0 -1px; }
+.sh-in:hover { border-color: var(--border); }
+.sh-in:focus { outline: none; border-color: var(--accent); background: var(--bg); }
+.sh-in::placeholder { color: var(--muted); opacity: .55; }
+.sh-win.editing .sh-in { border-color: var(--border); }
+textarea.sh-in { flex: 1; resize: none; overflow: hidden; display: block; }
+.sh-block[data-t="text"] textarea.sh-in { min-height: 54px; }
+.sh-k { flex: none; width: 104px; font-size: 12px; font-weight: 600; color: var(--muted); padding-top: 6px; line-height: 1.3; overflow-wrap: anywhere; }
+input.sh-k { padding-top: 3px; font-size: 12.5px; }
+.sh-text { flex: 1; font-size: 14px; line-height: 1.45; white-space: pre-wrap; overflow-wrap: anywhere; padding: 4px 0; }
+.sh-name { flex: 1; font-size: 14px; }
+span.sh-name { padding: 3px 0; }
+.sh-n { width: 46px; flex: none; text-align: center; font-weight: 700; font-variant-numeric: tabular-nums; -moz-appearance: textfield; appearance: textfield; }
+.sh-n::-webkit-outer-spin-button, .sh-n::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+.sh-roll, .sh-x { width: 26px; height: 26px; flex: none; display: inline-grid; place-items: center; border-radius: 4px; color: var(--muted); }
+.sh-roll svg.i, .sh-x svg.i { width: 15px; height: 15px; }
+.sh-roll { color: var(--accent); border: 1px solid var(--border); }
+.sh-roll:hover { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+.sh-x:hover { background: var(--surface-2); color: var(--text); }
+.sh-x[data-act="sh-del-row"]:hover, .sh-x[data-act="sh-del-block"]:hover { color: var(--danger); }
+.sh-boxes { display: flex; flex-wrap: wrap; gap: 5px; }
+.sh-box { width: 26px; height: 26px; border: 2px solid var(--muted); border-radius: 4px; display: grid; place-items: center; font-size: 12px; font-weight: 700; color: var(--muted); background: var(--bg); position: relative; }
+.sh-box:not(:disabled):hover { border-color: var(--accent); }
+.sh-box.on { border-color: var(--danger); color: transparent; background: color-mix(in srgb, var(--danger) 22%, var(--bg)); }
+.sh-box.on::before, .sh-box.on::after { content: ""; position: absolute; left: 3px; right: 3px; top: 50%; height: 2.5px; margin-top: -1.25px; border-radius: 2px; background: var(--danger); transform: rotate(45deg); }
+.sh-box.on::after { transform: rotate(-45deg); }
+.sh-box:disabled { cursor: default; }
+.sh-add { align-self: flex-start; margin-top: 2px; opacity: .75; text-decoration: none; }
+.sh-addblock { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; padding-top: 12px; border-top: 1px dashed var(--border); font-size: 12.5px; color: var(--muted); }
+.sh-chip { padding: 4px 10px; border: 1px solid var(--border); border-radius: 99px; font-size: 12.5px; font-weight: 600; background: var(--surface-2); }
+.sh-chip:hover { border-color: var(--accent); color: var(--accent); }
+.dice-who { padding-top: 8px; border-top: 1px solid var(--border); font-size: 12.5px; font-weight: 600; color: var(--muted); max-width: 320px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.dice-who + .dice-line.big { border-top: 0; padding-top: 0; }
+/* общие броски: имя игрока и состояние связи */
+.dice-net { display: flex; align-items: center; gap: 6px; }
+.dice-name { flex: 0 1 132px; width: 132px; min-width: 60px; height: 26px; padding: 0 8px; border-radius: var(--radius); border: 1px solid var(--border); background: var(--bg); color: var(--text); font: inherit; font-size: 12.5px; }
+.dice-name:focus { outline: none; border-color: var(--accent); }
+.dice-name::placeholder { color: var(--muted); opacity: .7; }
+.dice-net-st { margin-left: auto; display: inline-flex; align-items: center; gap: 6px; font-size: 11.5px; color: var(--muted); white-space: nowrap; }
+.dice-net-st::before { content: ''; width: 7px; height: 7px; border-radius: 50%; background: var(--muted); flex: none; }
+.dice-net-st.on::before { background: #3fb950; }
+.dice-net-st.off::before { background: #e5484d; }
+.dice-net-st.sec::before { background: var(--accent); }
+.dice-by { flex: 0 1 auto; max-width: 92px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 600; color: var(--text); }
+.dice-banner i { display: block; font-style: normal; font-size: 13px; font-weight: 600; color: var(--text); white-space: nowrap; max-width: 60vw; overflow: hidden; text-overflow: ellipsis; padding-top: 4px; }
 [data-theme="neon"] .board { --die: linear-gradient(135deg, #2a1f44, #130e22); --die-ink: var(--accent); --die-edge: var(--accent); --die-shade: rgba(0,0,0,.5); }
 [data-theme="noir"] .board { --die: linear-gradient(135deg, #2c2c2c, #101010); --die-ink: #f1f1f1; --die-edge: rgba(255,255,255,.3); --die-shade: rgba(0,0,0,.5); }
 
@@ -721,8 +805,27 @@ button.b-name:hover { background: var(--surface-2); }
 [data-theme="rome"] .dice-banner { border-radius: 1px; border-color: #6a5334; background: var(--grain), linear-gradient(180deg, #2a2018, #17120d); box-shadow: inset 0 0 0 3px #120e0a, inset 0 0 0 4px #5a4526, 0 14px 34px rgba(0,0,0,.7); padding: 10px 40px 14px; }
 [data-theme="rome"] .dice-banner b { font-weight: 400; font-size: 54px; color: #e9c877; text-shadow: 0 2px 0 rgba(0,0,0,.6); }
 [data-theme="rome"] .dice-banner span { font: 400 15px/1 var(--font-head); letter-spacing: .14em; color: #d9c9a8; }
+[data-theme="rome"] .rail-p { border-radius: 1px; border: 1px solid #8a6a36; box-shadow: inset 0 0 0 2px #120e0a, 0 2px 5px rgba(0,0,0,.6); }
+[data-theme="rome"] .rail-p.on { border-color: #f0d28a; box-shadow: 0 0 0 2px #b98a3c, 0 2px 8px rgba(0,0,0,.7); }
+[data-theme="rome"] .rail-p .nm { font: 400 11.5px/1.2 var(--font-head); letter-spacing: .05em; text-transform: uppercase; }
+[data-theme="rome"] .sh-win { border-radius: 1px; border-color: #6a5334; background: var(--grain), linear-gradient(180deg, #221a13, #18130e); box-shadow: inset 0 0 0 2px #120e0a, inset 0 0 0 3px #3d2f1e, 0 14px 34px rgba(0,0,0,.7); }
+[data-theme="rome"] .sh-head { background: var(--veins-light) -80px -30px / 420px 260px, linear-gradient(180deg, #3a2f24, #261e16); border-bottom-color: #6a5334; margin: 3px 3px 0; }
+[data-theme="rome"] .sh-av { border-radius: 1px; border-color: #8a6a36; }
+[data-theme="rome"] .sh-ttl b { font-weight: 400; font-size: 17px; letter-spacing: .05em; text-transform: uppercase; color: #ecdfc6; text-shadow: 0 -1px 0 rgba(0,0,0,.8); }
+[data-theme="rome"] h4.sh-title, [data-theme="rome"] .sh-bhead .sh-title { font: 400 14.5px/1.3 var(--font-head); letter-spacing: .12em; text-transform: uppercase; color: #cfa456; }
+[data-theme="rome"] .sh-in, [data-theme="rome"] .sh-text, [data-theme="rome"] span.sh-name { font-family: var(--font-read); }
+[data-theme="rome"] .sh-in, [data-theme="rome"] .sh-box, [data-theme="rome"] .sh-roll, [data-theme="rome"] .sh-x, [data-theme="rome"] .sh-tpl, [data-theme="rome"] .sh-secret { border-radius: 1px; }
+[data-theme="rome"] .sh-box { border: 1px solid #8a6a36; background: #120e0a; box-shadow: inset 0 0 0 2px #120e0a, inset 0 0 0 3px #3d2f1e; }
+[data-theme="rome"] .sh-box.on { border-color: #b3402d; background: #2a120d; }
+[data-theme="rome"] .sh-roll { border-color: #6f4f1c; color: #2a1a06; background: linear-gradient(180deg, #e8c47c, #c2933f 55%, #9e722d); box-shadow: inset 0 1px 0 rgba(255,245,210,.6); }
+[data-theme="rome"] .sh-roll:hover { filter: brightness(1.12); }
+[data-theme="rome"] .sh-chip { border-radius: 1px; font: 400 13px/1.3 var(--font-head); letter-spacing: .06em; text-transform: uppercase; }
+[data-theme="rome"] .sh-tpl b { font: 400 16px/1.3 var(--font-head); letter-spacing: .06em; text-transform: uppercase; }
+[data-theme="rome"] .dice-banner i { font-family: var(--font-head); font-weight: 400; font-size: 15px; letter-spacing: .06em; color: #d9c9a8; }
 @media (max-width: 760px) {
-  .b-top { left: 8px; top: 8px; } .b-tools { left: 8px; top: 62px; } .b-pen { left: 60px; top: 62px; }
+  .b-top { left: 8px; top: 8px; }
+  .b-rail { right: 8px; top: 8px; max-height: calc(100% - 150px); } .rail-p, .rail-none { width: 50px; } .rail-p { height: 50px; }
+  .sh-k { width: 84px; } .b-tools { left: 8px; top: 62px; } .b-pen { left: 60px; top: 62px; }
   .b-zoom { display: none; }
   .dice-panel { left: 8px; right: 8px; bottom: 8px; max-width: none; }
   .dice-row .btn { margin-left: auto; }
@@ -776,6 +879,8 @@ const ICON = {
   front: '<path d="M12 19V6M6.5 11.5 12 6l5.5 5.5"/>',
   back: '<path d="M12 5v13M6.5 12.5 12 18l5.5-5.5"/>',
   refresh: '<path d="M20 11a8 8 0 1 0-2.4 6.6"/><path d="M20 5v6h-6"/>',
+  check: '<path d="m5 12.5 4.5 4.5L19 7.5"/>',
+  list: '<path d="M9 7h11M9 12h11M9 17h11"/><path d="M4.5 7h.01M4.5 12h.01M4.5 17h.01"/>',
   dots: '<circle cx="5" cy="12" r="1.3"/><circle cx="12" cy="12" r="1.3"/><circle cx="19" cy="12" r="1.3"/>',
 };
 const ic = n => `<svg class="i" viewBox="0 0 24 24" aria-hidden="true">${ICON[n] || ''}</svg>`;
@@ -1665,6 +1770,7 @@ function filterState(src, o = {}) {
   st.sessions.forEach(x => { for (const k of ['characters', 'locations', 'threads']) x[k] = (x[k] || []).filter(id => keep[k].has(id)); });
   st.threads.forEach(x => { x.characters = (x.characters || []).filter(id => keep.characters.has(id)); });
   if (!o.charNotes) st.characters.forEach(x => { x.notes = ''; });
+  st.characters.forEach(x => { if (x.sheet && x.sheet.secret) delete x.sheet; });
   st.boards = (src.boards || []).filter(b => cids.has(b.campaignId) && !b.secret).map(clone);
   return st;
 }
@@ -1970,7 +2076,7 @@ function publishDone(r) {
 }
 
 /* ═════════ Доска: картинки, маркер и кубики FATE ═════════ */
-const BV = { ids: {}, cams: {}, b: null, cam: null, tool: 'move', color: '#e5484d', size: 1, sel: null, undo: [], blank: null, drag: null, pts: new Map(), space: false, mod: 0, rolls: [], roll: 0, log: false };
+const BV = { ids: {}, cams: {}, b: null, cam: null, tool: 'move', color: '#e5484d', size: 1, sel: null, undo: [], blank: null, drag: null, pts: new Map(), space: false, mod: 0, rolls: [], roll: 0, log: false, secret: false };
 const B_COLORS = ['#e5484d', '#f2a33c', '#f2d94c', '#3fb86b', '#4a9df0', '#f4f1e8', '#17171a'];
 const B_SIZES = [2.5, 5, 11];
 const LADDER = { 8: 'Легендарный', 7: 'Эпический', 6: 'Фантастический', 5: 'Великолепный', 4: 'Отличный', 3: 'Хороший', 2: 'Неплохой', 1: 'Средний', 0: 'Посредственный', '-1': 'Плохой', '-2': 'Ужасный' };
@@ -2011,6 +2117,8 @@ function viewBoard() {
     </svg>
     <div class="b-empty" id="b-empty" hidden>${READONLY ? `<h3>Доска пока пустая</h3><p>Когда ведущий что-нибудь на неё добавит, это появится здесь. Кубики можно бросать уже сейчас.</p>` : `<h3>Это доска</h3><p>Перетащите сюда картинку, вставьте её из буфера (Ctrl+V) или нажмите кнопку с картинкой слева. Картинки можно двигать и растягивать, поверх — рисовать маркером. Колесо мыши приближает, пустое место тянется, как лист.</p>`}</div>
     <div class="dice-stage" id="dice-stage"></div>
+    <div id="b-wins"></div>
+    ${railHtml()}
     <div class="b-panel b-top">
       ${many || !READONLY ? `<button class="b-name" data-act="b-menu" title="Доски кампании"><span id="b-name">${esc(b.name)}</span>${ic('down')}</button>` : `<span class="b-name"><span id="b-name">${esc(b.name)}</span></span>`}
       <span id="b-lock"></span>
@@ -2040,6 +2148,7 @@ function viewBoard() {
         <button class="b-btn sm" data-act="dice-mod" data-v="-1" aria-label="Уменьшить навык">${ic('minus')}</button><b id="dice-mod">${signed(BV.mod) || '0'}</b><button class="b-btn sm" data-act="dice-mod" data-v="1" aria-label="Увеличить навык">${ic('plus')}</button>
         <button class="btn primary" data-act="dice-roll">${ic('dice')}Бросить 4dF</button>
       </div>
+      ${ONLINE ? `<div class="dice-net"><input class="dice-name" id="dice-name" maxlength="24" placeholder="Ваше имя" value="${esc(Live.name())}" title="Под этим именем ваши броски увидят остальные" aria-label="Ваше имя">${OWNER ? `<button class="b-btn sm ${BV.secret ? 'on' : ''}" data-act="dice-secret" title="Тайный бросок: результат увидите только вы" aria-label="Тайный бросок">${ic('lock')}</button>` : ''}<span class="dice-net-st" id="dice-net"></span></div>` : ''}
       <div id="dice-log"></div>
     </div>
   </div>`;
@@ -2054,7 +2163,7 @@ function boardMount() {
   svg.addEventListener('wheel', e => { e.preventDefault(); const r = boardRect(); zoomAt(e.clientX - r.left, e.clientY - r.top, Math.exp(-e.deltaY * (e.ctrlKey ? 0.01 : 0.0016))); }, { passive: false });
   svg.addEventListener('contextmenu', e => e.preventDefault());
   BV.cam = BV.cams[b.id]; if (!BV.cam) boardFit(true);
-  boardDraw(); applyCam(); boardChrome(); diceLog();
+  boardDraw(); applyCam(); boardChrome(); diceLog(); winsMount();
 }
 function boardChrome() {
   const b = BV.b, n = $('#b-name'), l = $('#b-lock'); if (!b || !n) return;
@@ -2310,16 +2419,25 @@ function fudge() {
   return out;
 }
 const diceSyms = vals => vals.map(v => `<i class="dsym ${SYM[v]}"></i>`).join('');
+const rollTitle = r => [r.secret ? 'Тайно' : '', r.who, r.label].filter(Boolean).join(' · ');
+function logRoll(r) { BV.rolls.push(r); BV.rolls.sort((a, b) => (b.at || 0) - (a.at || 0)); if (BV.rolls.length > 30) BV.rolls.length = 30; }
 function diceLog() {
+  if (ONLINE) Live.paint();
   const el = $('#dice-log'); if (!el) return;
   const m = $('#dice-mod'); if (m) m.textContent = signed(BV.mod) || '0';
   if (!BV.rolls.length || BV.rolling) { el.innerHTML = ''; return; }
-  const line = (r, big) => `<div class="dice-line ${big ? 'big' : ''}"><span class="dsyms">${diceSyms(r.vals)}</span><span class="dice-sum">${signed(r.sum) || '0'}${r.mod ? ` ${r.mod > 0 ? '+' : '−'} ${Math.abs(r.mod)} = <b>${signed(r.total) || '0'}</b>` : ''}</span><span class="dice-word">${ladder(r.total)}</span></div>`;
+  const line = (r, big) => (big && rollTitle(r) ? `<div class="dice-who">${esc(rollTitle(r))}</div>` : '') + `<div class="dice-line ${big ? 'big' : ''}" title="${esc(rollTitle(r))}">${!big && r.who ? `<span class="dice-by">${esc(r.who)}</span>` : ''}<span class="dsyms">${diceSyms(r.vals)}</span><span class="dice-sum">${signed(r.sum) || '0'}${r.mod ? ` ${r.mod > 0 ? '+' : '−'} ${Math.abs(r.mod)} = <b>${signed(r.total) || '0'}</b>` : ''}</span><span class="dice-word">${ladder(r.total)}</span></div>`;
   el.innerHTML = line(BV.rolls[0], true) + (BV.rolls.length > 1 ? `<button class="textlink" data-act="dice-history">${BV.log ? 'Скрыть прошлые броски' : 'Прошлые броски'}</button>${BV.log ? BV.rolls.slice(1, 9).map(r => line(r)).join('') : ''}` : '');
 }
-function rollDice() {
+function rollDice(label) {
+  if (!$('#dice-stage')) return;
+  const vals = fudge(), sum = vals.reduce((a, b) => a + b, 0), roll = { id: uid(), at: Date.now(), vals, sum, mod: BV.mod, total: sum + BV.mod, label: label || '' };
+  if (ONLINE) { roll.who = Live.name(); roll.secret = OWNER && BV.secret; if (!roll.secret) Live.send(roll); }
+  playRoll(roll);
+}
+function playRoll(roll) {
   const stage = $('#dice-stage'); if (!stage) return;
-  const vals = fudge(), sum = vals.reduce((a, b) => a + b, 0), roll = { vals, sum, mod: BV.mod, total: sum + BV.mod }, token = ++BV.roll;
+  const vals = roll.vals, token = ++BV.roll;
   const R = boardRect(), size = Math.round(clamp(R.width / 15, 44, 70)), half = size / 2, TAU = Math.PI * 2, rnd = (a, b) => a + Math.random() * (b - a);
   stage.className = 'dice-stage'; stage.style.setProperty('--s', size + 'px');
   stage.innerHTML = `<div class="dice-floor">${vals.map(v => `<div class="die-shadow"></div><div class="die" data-v="${v}"><div class="cube">${DIE_FACES.map(f => `<div class="face f-${f[0]} ${SYM[f[1]]}"></div>`).join('')}</div></div>`).join('')}</div><div class="dice-banner" id="dice-banner"></div>`;
@@ -2346,8 +2464,9 @@ function rollDice() {
   };
   const finish = () => {
     if (token !== BV.roll) return;
-    BV.rolling = false; BV.rolls.unshift(roll); if (BV.rolls.length > 30) BV.rolls.pop(); diceLog();
-    const b = $('#dice-banner'); if (b) { b.innerHTML = `<b>${signed(roll.total) || '0'}</b><span>${ladder(roll.total)}</span>`; b.classList.add('show'); }
+    BV.rolling = false; logRoll(roll); diceLog();
+    if (Live.queue.length) setTimeout(() => Live.next(), 2500);   // чужие броски, пришедшие во время этого, показываем по очереди
+    const b = $('#dice-banner'); if (b) { b.innerHTML = `${rollTitle(roll) ? `<i>${esc(rollTitle(roll))}</i>` : ''}<b>${signed(roll.total) || '0'}</b><span>${ladder(roll.total)}</span>`; b.classList.add('show'); }
     setTimeout(() => { if (token === BV.roll) { const s = $('#dice-stage'); if (s) s.classList.add('fade'); } }, 12000);
     setTimeout(() => { if (token === BV.roll) { const s = $('#dice-stage'); if (s) s.innerHTML = ''; } }, 12700);
   };
@@ -2356,13 +2475,120 @@ function rollDice() {
   const t0 = performance.now();
   const frame = now => {
     if (token !== BV.roll) return;
-    if (!stage.isConnected) { BV.rolling = false; BV.rolls.unshift(roll); return diceLog(); }   // доску закрыли во время броска — результат всё равно засчитан
+    if (!stage.isConnected) { BV.rolling = false; logRoll(roll); diceLog(); return Live.next(); }   // доску закрыли во время броска — результат всё равно засчитан
     let done = true;
     for (const d of dice) { const t = clamp((now - t0 - d.delay) / d.dur, 0, 1); if (t < 1) done = false; place(d, 1 - Math.pow(1 - t, 3)); }
     if (done) finish(); else requestAnimationFrame(frame);
   };
   dice.forEach(d => place(d, 0)); requestAnimationFrame(frame);
 }
+
+/* Общие броски. На сайте в интернете результат броска сразу видят все, у кого сайт открыт.
+   Своего сервера у журнала нет, поэтому сообщение уходит сразу по двум открытым бесплатным каналам
+   (ntfy.sh и общедоступный MQTT‑брокер) — достаточно, чтобы работал любой один. Канал назван по адресу сайта. */
+const fnv = s => { let h = 0x811c9dc5; for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 0x01000193); } return (h >>> 0).toString(36); };
+const Live = {
+  NTFY: 'https://ntfy.sh/', MQTT: ['wss://broker.emqx.io:8084/mqtt', 'wss://broker.hivemq.com:8884/mqtt'],
+  seen: new Set(), via: new Map(), queue: [], started: 0, esOk: false, wsOk: false, ws: null, pub: null, wsi: 0, off: 0, lastId: '', _room: '',
+  name() { return (lsGet('cj-name') || '').trim() || (OWNER ? 'Ведущий' : 'Игрок'); },
+  setName(v) { lsSet('cj-name', String(v).trim().slice(0, 24) || null); },
+  room() { if (!this._room) { const k = `${ONLINE.owner}/${ONLINE.repo}`.toLowerCase(); this._room = 'cjr-' + fnv(k) + fnv('rolls:' + k) + fnv(k + ':4df'); } return this._room; },
+  online() { return this.esOk || this.wsOk; },
+  start() {
+    if (!ONLINE || this.started || SANDBOX) return;
+    this.started = Date.now(); this.sse(); this.mqtt(); setTimeout(() => this.paint(), 12500);
+  },
+  paint() {
+    const el = $('#dice-net'); if (!el) return;
+    const on = this.online(), wait = !on && this.started && Date.now() - this.started < 12000, sec = OWNER && BV.secret;
+    el.className = 'dice-net-st ' + (sec ? 'sec' : on ? 'on' : wait ? 'wait' : 'off');
+    el.textContent = sec ? 'Тайно: бросок увидите только вы' : on ? 'Броски видят все' : wait ? 'Подключаемся…' : 'Нет связи: бросок увидите только вы';
+  },
+  /* канал 1: ntfy.sh — поток событий, заодно отдаёт броски за последние часы */
+  sse() {
+    if (!window.EventSource) return;
+    let es; try { es = new EventSource(this.NTFY + this.room() + '/sse?since=' + (this.lastId || '6h')); } catch (e) { return; }
+    es.addEventListener('open', e => {
+      this.esOk = true;
+      if (e.data) try { const d = JSON.parse(e.data); if (d.time) this.off = d.time * 1000 - Date.now(); } catch (x) {}
+      this.paint();
+    });
+    es.onmessage = e => {
+      let d, p; try { d = JSON.parse(e.data); if (d.event !== 'message') return; p = JSON.parse(d.message); } catch (x) { return; }
+      this.lastId = d.id || this.lastId;
+      const at = d.time * 1000 - this.off; this.receive(p, Date.now() - at, at, 'ntfy');
+    };
+    es.onerror = () => { this.esOk = false; this.paint(); if (es.readyState === 2) setTimeout(() => this.sse(), 20000); };
+  },
+  /* канал 2: MQTT поверх WebSocket — только самое нужное из протокола */
+  mqtt() {
+    if (!window.WebSocket || !window.TextEncoder) return;
+    const url = this.MQTT[this.wsi++ % this.MQTT.length], topic = 'cjr/' + this.room(), te = new TextEncoder(), td = new TextDecoder();
+    const str = t => { const b = te.encode(t); return [b.length >> 8, b.length & 255, ...b]; };
+    const pkt = (type, body) => { const len = []; let n = body.length; do { let d = n % 128; n = Math.floor(n / 128); if (n) d |= 128; len.push(d); } while (n); return new Uint8Array([type, ...len, ...body]); };
+    let ws, buf = new Uint8Array(0), ping = 0, dead = false;
+    const close = () => {
+      if (dead) return; dead = true; clearInterval(ping);
+      if (this.ws === ws) { this.ws = null; this.wsOk = false; this.pub = null; this.paint(); }
+      try { ws.close(); } catch (e) {}
+      setTimeout(() => this.mqtt(), 15000);
+    };
+    try { ws = new WebSocket(url, 'mqtt'); } catch (e) { setTimeout(() => this.mqtt(), 15000); return; }
+    ws.binaryType = 'arraybuffer'; this.ws = ws;
+    setTimeout(() => { if (!dead && !(this.wsOk && this.ws === ws)) close(); }, 12000);
+    ws.onopen = () => ws.send(pkt(0x10, [...str('MQTT'), 4, 2, 0, 60, ...str('cj' + uid())]));
+    ws.onclose = close; ws.onerror = close;
+    ws.onmessage = e => {
+      const add = new Uint8Array(e.data), all = new Uint8Array(buf.length + add.length); all.set(buf); all.set(add, buf.length); buf = all;
+      for (;;) {
+        if (buf.length < 2) return;
+        let len = 0, mul = 1, i = 1, b;
+        do { if (i >= buf.length) return; b = buf[i++]; len += (b & 127) * mul; mul *= 128; } while ((b & 128) && i < 5);
+        if (buf.length < i + len) return;
+        const head = buf[0], body = buf.slice(i, i + len); buf = buf.slice(i + len);
+        const type = head >> 4;
+        if (type === 2) { if (body[1] !== 0) return close(); ws.send(pkt(0x82, [0, 1, ...str(topic), 0])); }
+        else if (type === 9) {
+          this.wsOk = true; this.pub = text => ws.send(pkt(0x30, [...str(topic), ...te.encode(text)]));
+          ping = setInterval(() => { try { ws.send(new Uint8Array([0xC0, 0])); } catch (x) { close(); } }, 30000); this.paint();
+        } else if (type === 3) {
+          const from = 2 + (body[0] << 8 | body[1]) + ((head >> 1) & 3 ? 2 : 0);
+          try { this.receive(JSON.parse(td.decode(body.subarray(from))), 0, Date.now(), 'mqtt'); } catch (x) {}
+        }
+      }
+    };
+  },
+  send(r) {
+    this.seen.add(r.id); this.post(JSON.stringify({ v: 1, id: r.id, n: r.who, l: r.label, f: r.vals, m: r.mod }), true, true);
+  },
+  post(text, mqtt, ntfy) {
+    if (mqtt && this.pub) try { this.pub(text); } catch (e) {}
+    if (ntfy) try { fetch(this.NTFY + this.room(), { method: 'POST', body: text }).catch(() => {}); } catch (e) {}
+  },
+  receive(p, age, at, via) {
+    if (!p || p.v !== 1 || typeof p.id !== 'string' || !p.id || p.id.length > 40) return;
+    if (this.seen.has(p.id)) { const w = this.via.get(p.id); if (w) w[via] = true; return; }
+    const f = p.f, mod = Math.round(+p.m) || 0;
+    if (!Array.isArray(f) || f.length !== 4 || f.some(v => v !== -1 && v !== 0 && v !== 1) || Math.abs(mod) > 99) return;
+    this.seen.add(p.id); if (this.seen.size > 600) this.seen = new Set([...this.seen].slice(-300));
+    const sum = f[0] + f[1] + f[2] + f[3];
+    const roll = { id: p.id, at, vals: f.slice(), sum, mod, total: sum + mod, label: String(p.l || '').slice(0, 80), who: String(p.n || '').trim().slice(0, 24) || 'Игрок', remote: true };
+    if (age > 15000) { logRoll(roll); return diceLog(); }   // старый бросок из истории — только в список
+    if (OWNER) {   // у кого-то из игроков может работать только один канал: ведущий пересылает бросок во второй, если он туда не дошёл
+      const w = { [via]: true }; this.via.set(p.id, w);
+      setTimeout(() => { this.via.delete(p.id); this.post(JSON.stringify({ v: 1, id: roll.id, n: roll.who, l: roll.label, f: roll.vals, m: roll.mod }), !w.mqtt, !w.ntfy && this.esOk); }, 4000);
+    }
+    this.queue.push(roll); this.next();
+  },
+  next() {
+    if (BV.rolling || !this.queue.length) return;
+    const roll = this.queue.shift(), stage = $('#dice-stage');
+    if (stage && !document.hidden) return playRoll(roll);
+    logRoll(roll); diceLog();
+    if (!stage) toast(`${roll.who} бросает: ${signed(roll.total) || '0'} — ${ladder(roll.total)}`, 5000);
+    this.next();
+  }
+};
 
 /* ═════════ Фон страницы ═════════ */
 function bgBody() {
@@ -2518,6 +2744,7 @@ const ACT = {
   'dice-roll': () => { if (!BV.rolling) rollDice(); },
   'dice-mod': el => { BV.mod = clamp(BV.mod + +el.dataset.v, -4, 12); diceLog(); },
   'dice-history': () => { BV.log = !BV.log; diceLog(); },
+  'dice-secret': el => { BV.secret = !BV.secret; el.classList.toggle('on', BV.secret); Live.paint(); },
   bg: () => openBg(),
   'bg-set': el => {
     const v = el.dataset.v, preset = BACKDROPS.find(b => 'preset:' + b.id === v);
@@ -2540,7 +2767,193 @@ const ACT = {
   'sync-retry': () => Sync.run(Sync.conflict),
   reload: () => location.reload(),
 };
-const EDIT_ACTS = new Set(['new', 'edit', 'edit-campaign', 'new-campaign', 'del-campaign', 'create-menu', 'export', 'import', 'share', 'share-go', 'publish', 'publish-go', 'copy-link', 'owner-logout', 'sync-retry', 'bg', 'bg-set', 'bg-dim', 'bg-upload', 'b-tool', 'b-color', 'b-size', 'b-add-menu', 'b-upload', 'b-journal', 'b-pick', 'b-undo', 'b-clear', 'b-new', 'b-settings', 'b-save', 'b-del', 'b-lock', 'b-order', 'b-remove']);
+/* ═════════ Листы персонажей на доске ═════════ */
+const SH_TYPES = { list: 'Список строк', rated: 'Навыки с числами', track: 'Клетки', counter: 'Счётчики', text: 'Свободный текст' };
+const SH_NEW = { list: ['Новый раздел', () => ({ k: '', v: '' })], rated: ['Навыки', () => ({ k: '', n: 0 })], track: ['Стресс', () => ({ k: '', boxes: [0, 0] })], counter: ['Счётчики', () => ({ k: '', n: 0 })], text: ['Заметки', null] };
+const shRows = (...ks) => ks.map(k => ({ k, v: '' }));
+const shPyramid = () => [4, 3, 3, 2, 2, 2, 1, 1, 1, 1].map(n => ({ k: '', n }));
+const shTail = () => [{ t: 'list', title: 'Трюки', rows: shRows('', '', '') }, { t: 'counter', title: 'Жетоны судьбы', rows: [{ k: 'Обновление', n: 3 }, { k: 'Сейчас', n: 3 }] }];
+const shCons = () => [{ t: 'list', title: 'Последствия', rows: shRows('Лёгкое (2)', 'Умеренное (4)', 'Тяжёлое (6)') }, { t: 'text', title: 'Заметки', text: '' }];
+const SHEETS = {
+  core: { name: 'Fate Core', hint: 'навыки пирамидой, два трека стресса с номерами клеток', make: () => [{ t: 'list', title: 'Аспекты', rows: shRows('Концепция', 'Проблема', '', '', '') }, { t: 'rated', title: 'Навыки', rows: shPyramid() }, ...shTail(),
+    { t: 'track', title: 'Стресс', numbered: true, rows: [{ k: 'Физический', boxes: [0, 0] }, { k: 'Ментальный', boxes: [0, 0] }] }, ...shCons()] },
+  fae: { name: 'Fate Accelerated', hint: 'шесть подходов вместо навыков, один трек стресса', make: () => [{ t: 'list', title: 'Аспекты', rows: shRows('Концепция', 'Проблема', '', '', '') },
+    { t: 'rated', title: 'Подходы', rows: [['Аккуратный', 2], ['Умный', 1], ['Эффектный', 1], ['Мощный', 0], ['Быстрый', 2], ['Хитрый', 3]].map(([k, n]) => ({ k, n })) }, ...shTail(),
+    { t: 'track', title: 'Стресс', numbered: true, rows: [{ k: '', boxes: [0, 0, 0] }] }, ...shCons()] },
+  condensed: { name: 'Fate Condensed', hint: 'как Core, но клетки стресса по одному очку', make: () => [{ t: 'list', title: 'Аспекты', rows: shRows('Концепция', 'Проблема', 'Отношения', '', '') }, { t: 'rated', title: 'Навыки', rows: shPyramid() }, ...shTail(),
+    { t: 'track', title: 'Стресс', rows: [{ k: 'Физический', boxes: [0, 0, 0] }, { k: 'Ментальный', boxes: [0, 0, 0] }] }, ...shCons()] },
+  blank: { name: 'Пустой лист', hint: 'соберу разделы сам', make: () => [] },
+};
+const SW = { by: {}, drag: null, menuFor: null, hide: false, ro: null, timer: null };
+try { SW.by = JSON.parse(lsGet('cj-sheets') || '{}') || {}; } catch (e) { SW.by = {}; }
+const wins = () => (SW.by[cid()] = Array.isArray(SW.by[cid()]) ? SW.by[cid()] : []);
+const winsSave = () => { clearTimeout(SW.timer); SW.timer = setTimeout(() => lsSet('cj-sheets', JSON.stringify(SW.by)), 300); };
+const shChar = id => S.characters.find(c => c.id === id && c.campaignId === cid()) || null;
+const campChars = () => S.characters.filter(c => c.campaignId === cid()).sort((a, b) => (a.kind === 'pc' ? 0 : 1) - (b.kind === 'pc' ? 0 : 1) || a.name.localeCompare(b.name, 'ru'));
+function castOf(b) {
+  const all = campChars();
+  return Array.isArray(b.cast) ? b.cast.map(id => all.find(c => c.id === id)).filter(Boolean) : all.filter(c => c.kind === 'pc');
+}
+function railHtml() {
+  const cast = castOf(curBoard()), open = new Set(wins().map(w => w.id));
+  if (!cast.length && READONLY) return `<div id="b-rail" hidden></div>`;
+  return `<div class="b-panel b-rail ${SW.hide ? 'hide' : ''}" id="b-rail">
+    <button class="b-btn" data-act="rail-toggle" title="${SW.hide ? 'Показать портреты' : 'Свернуть портреты'}" aria-label="Портреты персонажей">${ic('users')}</button>
+    <div class="rail-list">${cast.map(c => { const src = c.portrait && IMG[c.portrait]; return `<button class="rail-p ${open.has(c.id) ? 'on' : ''}" data-act="sh-open" data-id="${esc(c.id)}" title="${esc(c.name)} — лист персонажа">${src ? `<img src="${esc(src)}" alt="">` : `<span class="ph">${esc(initials(c.name))}</span>`}<span class="nm">${esc(c.name.trim().split(/\s+/)[0])}</span></button>`; }).join('')
+      || `<p class="rail-none">Портретов пока нет</p>`}</div>
+    ${READONLY ? '' : `<button class="b-btn" data-act="sh-cast-menu" title="Выбрать, чьи портреты здесь стоят" aria-label="Выбрать персонажей">${ic('plus')}</button>`}
+  </div>`;
+}
+function railRender() { const r = $('#b-rail'); if (r) r.outerHTML = railHtml(); }
+function blockHtml(b, bi, edit, ro) {
+  const at = `data-b="${bi}"`, rows = b.rows || [];
+  const inp = (f, v, ph, cls, ri, extra = '') => `<input class="sh-in ${cls}" data-sf="${f}" ${at}${ri == null ? '' : ` data-r="${ri}"`} value="${esc(v ?? '')}" placeholder="${ph}" aria-label="${ph}" autocomplete="off" spellcheck="false" ${extra}>`;
+  const area = (f, v, ph, ri) => `<textarea class="sh-in sh-v" data-sf="${f}" ${at}${ri == null ? '' : ` data-r="${ri}"`} rows="1" placeholder="${ph}" aria-label="${ph === '…' ? 'Текст' : ph}">${esc(v || '')}</textarea>`;
+  const x = (act, icon, title, ri, extra = '') => `<button class="sh-x" data-act="${act}" ${at}${ri == null ? '' : ` data-r="${ri}"`} ${extra} title="${title}" aria-label="${title}">${ic(icon)}</button>`;
+  const del = ri => edit ? x('sh-del-row', 'x', 'Убрать строку', ri) : '';
+  let body = '';
+  if (b.t === 'text') body = ro ? (b.text ? `<p class="sh-text">${esc(b.text)}</p>` : '') : area('text', b.text, 'Текст…');
+  else if (b.t === 'list') body = rows.map((r, ri) => ro ? (r.k || r.v ? `<div class="sh-row">${r.k ? `<span class="sh-k">${esc(r.k)}</span>` : ''}<span class="sh-text">${esc(r.v)}</span></div>` : '')
+    : `<div class="sh-row">${edit ? inp('k', r.k, 'подпись', 'sh-k', ri) : r.k ? `<span class="sh-k">${esc(r.k)}</span>` : ''}${area('v', r.v, '…', ri)}${del(ri)}</div>`).join('');
+  else if (b.t === 'rated') body = rows.map((r, ri) => {
+    const roll = `<button class="sh-roll" data-act="sh-roll" ${at} data-r="${ri}" title="Бросить кубики с этим значением" aria-label="Бросить кубики">${ic('dice')}</button>`;
+    return ro ? (r.k ? `<div class="sh-row rated"><span class="sh-name">${esc(r.k)}</span><b class="sh-n">${signed(+r.n || 0) || '0'}</b>${roll}</div>` : '')
+      : `<div class="sh-row rated">${inp('k', r.k, 'Название', 'sh-name', ri)}${inp('n', +r.n || 0, '0', 'sh-n', ri, 'type="number" step="1"')}${roll}${del(ri)}</div>`;
+  }).join('');
+  else if (b.t === 'track') body = rows.map((r, ri) => {
+    const boxes = (r.boxes || []).map((v, i) => `<button class="sh-box ${v ? 'on' : ''}" ${ro ? 'disabled' : `data-act="sh-box" ${at} data-r="${ri}" data-i="${i}"`} aria-pressed="${!!v}" aria-label="Клетка ${i + 1}">${b.numbered ? i + 1 : ''}</button>`).join('');
+    return `<div class="sh-row track">${ro ? (r.k ? `<span class="sh-name">${esc(r.k)}</span>` : '') : inp('k', r.k, 'Название', 'sh-name', ri)}<span class="sh-boxes">${boxes}</span>${edit ? x('sh-box-n', 'minus', 'Убрать клетку', ri, 'data-v="-1"') + x('sh-box-n', 'plus', 'Добавить клетку', ri, 'data-v="1"') : ''}${del(ri)}</div>`;
+  }).join('');
+  else if (b.t === 'counter') body = rows.map((r, ri) => ro ? `<div class="sh-row rated"><span class="sh-name">${esc(r.k)}</span><b class="sh-n">${+r.n || 0}</b></div>`
+    : `<div class="sh-row rated">${inp('k', r.k, 'Название', 'sh-name', ri)}${x('sh-step', 'minus', 'Меньше', ri, 'data-v="-1"')}${inp('n', +r.n || 0, '0', 'sh-n', ri, 'type="number" step="1"')}${x('sh-step', 'plus', 'Больше', ri, 'data-v="1"')}${del(ri)}</div>`).join('');
+  if (ro && !body) return '';
+  const head = edit ? `<div class="sh-bhead">${inp('title', b.title, 'Название раздела', 'sh-title')}${b.t === 'track' ? x('sh-numbered', 'list', b.numbered ? 'Убрать номера в клетках' : 'Показать номера в клетках') : ''}${x('sh-move-block', 'front', 'Раздел выше', null, 'data-v="-1"')}${x('sh-move-block', 'back', 'Раздел ниже', null, 'data-v="1"')}${x('sh-del-block', 'trash', 'Удалить раздел')}</div>`
+    : `<h4 class="sh-title">${esc(b.title || SH_TYPES[b.t])}</h4>`;
+  return `<div class="sh-block" data-t="${b.t}">${head}${body}${!ro && b.t !== 'text' ? `<button class="textlink sh-add" data-act="sh-add-row" ${at}>+ строка</button>` : ''}</div>`;
+}
+function sheetBody(c, edit) {
+  const sh = c.sheet, ro = READONLY;
+  if (!sh) return ro ? `<p class="sh-none">Листа этого персонажа здесь нет.</p>${c.role ? `<p class="sh-none">${esc(c.role)}</p>` : ''}`
+    : `<p class="sh-none">У этого персонажа ещё нет листа. Выберите заготовку — потом в ней можно изменить всё: названия, разделы, строки, клетки.</p><div class="sh-tpls">${Object.entries(SHEETS).map(([k, t]) => `<button class="sh-tpl" data-act="sh-tpl" data-v="${k}"><b>${t.name}</b><span>${t.hint}</span></button>`).join('')}</div>`;
+  const blocks = sh.blocks.map((b, bi) => blockHtml(b, bi, edit, ro)).join('');
+  return (!ro && sh.secret ? `<button class="sh-secret" data-act="sh-secret" title="Нажмите, чтобы показать лист другим">${ic('lock')}Этот лист видите только вы</button>` : '')
+    + (blocks || `<p class="sh-none">${ro ? 'Лист пока пустой.' : 'Лист пустой. Нажмите на карандаш вверху и добавьте разделы.'}</p>`)
+    + (edit ? `<div class="sh-addblock"><span>Добавить раздел:</span>${Object.entries(SH_TYPES).map(([k, n]) => `<button class="sh-chip" data-act="sh-add-block" data-v="${k}">${n}</button>`).join('')}</div>` : '');
+}
+function winHtml(w, i) {
+  const c = shChar(w.id); if (!c) return '';
+  const ro = READONLY, edit = !ro && !!w.edit && !!c.sheet, src = c.portrait && IMG[c.portrait];
+  const sub = c.kind === 'pc' ? (c.player ? 'Игрок: ' + c.player : 'Персонаж игрока') : (c.role || 'НИП');
+  return `<section class="sh-win ${w.min ? 'min' : ''} ${edit ? 'editing' : ''}" data-id="${esc(c.id)}" style="left:${w.x}px;top:${w.y}px;width:${w.w}px;${w.min ? '' : `height:${w.h}px;`}z-index:${6 + i}" aria-label="Лист: ${esc(c.name)}">
+    <header class="sh-head">${src ? `<img class="sh-av" src="${esc(src)}" alt="">` : `<span class="sh-av">${esc(initials(c.name))}</span>`}<div class="sh-ttl"><b>${esc(c.name)}</b><span>${esc(sub)}</span></div>
+      ${!ro && c.sheet ? `<button class="b-btn sm ${edit ? 'on' : ''}" data-act="sh-edit" title="${edit ? 'Закончить настройку' : 'Настроить лист: разделы, названия, строки'}" aria-label="Настроить лист">${ic('edit')}</button><button class="b-btn sm" data-act="sh-menu" title="Ещё" aria-label="Ещё">${ic('dots')}</button>` : ''}
+      <button class="b-btn sm" data-act="sh-min" title="${w.min ? 'Развернуть' : 'Свернуть в полоску'}" aria-label="${w.min ? 'Развернуть' : 'Свернуть'}">${ic(w.min ? 'down' : 'minus')}</button><button class="b-btn sm" data-act="sh-close" title="Закрыть лист" aria-label="Закрыть лист">${ic('x')}</button>
+    </header><div class="sh-body">${sheetBody(c, edit)}</div></section>`;
+}
+const shGrow = t => { t.style.height = 'auto'; t.style.height = t.scrollHeight + 2 + 'px'; };
+function winsRender() {
+  const box = $('#b-wins'); if (!box) return;
+  const R = boardRect(), list = wins();
+  for (let i = list.length - 1; i >= 0; i--) if (!shChar(list[i].id)) list.splice(i, 1);
+  list.forEach(w => { w.w = clamp(w.w || 380, 260, Math.max(260, R.width - 12)); w.h = clamp(w.h || 560, 140, Math.max(140, R.height - 12)); w.x = clamp(w.x, 0, Math.max(0, R.width - w.w)); w.y = clamp(w.y, 0, Math.max(0, R.height - 60)); });
+  box.innerHTML = list.map(winHtml).join('');
+  $$('textarea', box).forEach(shGrow);
+  if (window.ResizeObserver) {
+    if (SW.ro) SW.ro.disconnect();
+    SW.ro = new ResizeObserver(es => { for (const en of es) { const el = en.target, w = wins().find(x => x.id === el.dataset.id); if (!w || w.min || !el.offsetWidth) continue; if (el.offsetWidth !== w.w || el.offsetHeight !== w.h) { w.w = el.offsetWidth; w.h = el.offsetHeight; winsSave(); } } });
+    $$('.sh-win', box).forEach(el => SW.ro.observe(el));
+  }
+}
+function winRefresh(id, focus) {
+  const el = $(`.sh-win[data-id="${id}"]`), list = wins(), i = list.findIndex(w => w.id === id); if (!el || i < 0) return winsRender();
+  const top = $('.sh-body', el).scrollTop; el.outerHTML = winHtml(list[i], i);
+  const fresh = $(`.sh-win[data-id="${id}"]`); if (!fresh) return;
+  $$('textarea', fresh).forEach(shGrow); $('.sh-body', fresh).scrollTop = top; if (SW.ro) SW.ro.observe(fresh);
+  if (focus) { const f = $(focus, fresh); if (f) f.focus(); }
+}
+function winsMount() {
+  const box = $('#b-wins'); if (!box) return;
+  box.addEventListener('pointerdown', e => {
+    const el = e.target.closest('.sh-win'), list = wins(), w = el && list.find(x => x.id === el.dataset.id); if (!w) return;
+    if (list[list.length - 1] !== w) { list.splice(list.indexOf(w), 1); list.push(w); $$('.sh-win', box).forEach(n => { n.style.zIndex = 6 + list.findIndex(x => x.id === n.dataset.id); }); winsSave(); }
+    const head = e.target.closest('.sh-head'); if (!head || e.target.closest('button, input, textarea') || e.button) return;
+    e.preventDefault(); try { head.setPointerCapture(e.pointerId); } catch (err) { /* не страшно */ }
+    SW.drag = { w, el, dx: e.clientX - w.x, dy: e.clientY - w.y, id: e.pointerId };
+  });
+  box.addEventListener('pointermove', e => {
+    const d = SW.drag; if (!d || d.id !== e.pointerId) return;
+    const R = boardRect(); d.w.x = Math.round(clamp(e.clientX - d.dx, 80 - d.el.offsetWidth, R.width - 80)); d.w.y = Math.round(clamp(e.clientY - d.dy, 0, R.height - 44));
+    d.el.style.left = d.w.x + 'px'; d.el.style.top = d.w.y + 'px';
+  });
+  const end = e => { if (SW.drag && SW.drag.id === e.pointerId) { SW.drag = null; winsSave(); } };
+  box.addEventListener('pointerup', end); box.addEventListener('pointercancel', end);
+  winsRender();
+}
+function shCtx(el) {
+  const win = el.closest('.sh-win'), c = shChar(win ? win.dataset.id : SW.menuFor); if (!c) return null;
+  const b = c.sheet && el.dataset.b != null ? c.sheet.blocks[+el.dataset.b] : null, ri = el.dataset.r != null ? +el.dataset.r : -1;
+  return { c, w: wins().find(x => x.id === c.id), b, bi: +el.dataset.b, ri, row: b && b.rows && ri >= 0 ? b.rows[ri] : null };
+}
+function shTouch(c, redraw, focus) { c.updatedAt = Date.now(); save(5000); if (redraw) winRefresh(c.id, focus); }
+document.addEventListener('input', e => {
+  const t = e.target; if (!t.dataset || !t.dataset.sf || READONLY) return;
+  const x = shCtx(t), f = t.dataset.sf; if (!x || !x.b) return;
+  if (f === 'title') x.b.title = t.value; else if (f === 'text') x.b.text = t.value;
+  else if (x.row) x.row[f] = f === 'n' ? (parseInt(t.value, 10) || 0) : t.value;
+  if (t.tagName === 'TEXTAREA') shGrow(t);
+  shTouch(x.c);
+});
+Object.assign(ACT, {
+  'rail-toggle': () => { SW.hide = !SW.hide; railRender(); },
+  'sh-open': el => {
+    const id = el.dataset.id, list = wins(), R = boardRect(); let w = list.find(x => x.id === id);
+    if (w && !w.min && list[list.length - 1] === w) list.pop();                       // лист уже сверху — повторное нажатие закрывает
+    else if (w) { w.min = false; list.splice(list.indexOf(w), 1); list.push(w); }
+    else {
+      const n = list.length % 6, rail = $('#b-rail'), gap = rail && !rail.hidden ? rail.offsetWidth + 24 : 12, width = Math.min(360, R.width - 16);
+      let x = null;                                   // новые листы встают в ряд справа налево, пока есть место; дальше — лесенкой
+      for (let col = 0; col < 6 && x === null; col++) { const cx = R.width - gap - width * (col + 1) - 10 * col; if (cx < 84) break; if (!list.some(o => Math.abs(o.x - cx) < width - 40 && o.y < 80)) x = cx; }
+      list.push(x === null ? { id, w: width, h: Math.min(620, R.height - 28), x: Math.max(8, R.width - gap - width - 30 - n * 30), y: 48 + n * 40 } : { id, w: width, h: Math.min(620, R.height - 28), x, y: 12 });
+    }
+    winsSave(); winsRender(); railRender();
+  },
+  'sh-close': el => { const x = shCtx(el); if (!x) return; const list = wins(); list.splice(list.indexOf(x.w), 1); winsSave(); winsRender(); railRender(); },
+  'sh-min': el => { const x = shCtx(el); if (!x) return; x.w.min = !x.w.min; winsSave(); winRefresh(x.c.id); },
+  'sh-edit': el => { const x = shCtx(el); if (!x) return; x.w.edit = !x.w.edit; winRefresh(x.c.id); },
+  'sh-menu': el => {
+    const x = shCtx(el); if (!x) return; SW.menuFor = x.c.id;
+    openMenu(el, `<button data-act="sh-secret">${ic('lock')}${x.c.sheet.secret ? 'Показывать лист другим' : 'Скрыть лист от других'}</button><button data-act="sh-page">${ic('users')}Страница персонажа</button><hr><div class="menu-label">Заменить заготовкой</div>${Object.entries(SHEETS).map(([k, t]) => `<button data-act="sh-tpl" data-v="${k}">${ic('book')}${t.name}</button>`).join('')}`, true);
+  },
+  'sh-page': () => { const c = shChar(SW.menuFor); if (c) go('characters/' + c.id); },
+  'sh-secret': el => { const x = shCtx(el); if (!x || !x.c.sheet) return; x.c.sheet.secret = !x.c.sheet.secret; shTouch(x.c, true); toast(x.c.sheet.secret ? 'Лист скрыт: его видите только вы' : 'Лист теперь виден всем, у кого есть ссылка', 3200); },
+  'sh-tpl': async el => {
+    const x = shCtx(el), t = SHEETS[el.dataset.v]; if (!x || !t) return;
+    if (x.c.sheet && x.c.sheet.blocks.length && !(await confirmDialog(`Заменить лист персонажа «${esc(x.c.name)}» заготовкой «${t.name}»? Всё, что в нём записано, пропадёт.`, 'Заменить лист'))) return;
+    x.c.sheet = { secret: x.c.sheet ? !!x.c.sheet.secret : x.c.kind !== 'pc', blocks: t.make() }; if (x.w) x.w.edit = el.dataset.v === 'blank';
+    shTouch(x.c, true);
+  },
+  'sh-add-row': el => { const x = shCtx(el); if (!x || !x.b) return; x.b.rows = x.b.rows || []; x.b.rows.push(SH_NEW[x.b.t][1]()); shTouch(x.c, true, `[data-b="${x.bi}"][data-r="${x.b.rows.length - 1}"].sh-in:not(.sh-n)`); },
+  'sh-del-row': el => { const x = shCtx(el); if (!x || !x.row) return; x.b.rows.splice(x.ri, 1); shTouch(x.c, true); },
+  'sh-add-block': el => { const x = shCtx(el), t = el.dataset.v; if (!x || !SH_NEW[t]) return; const b = { t, title: SH_NEW[t][0] }; if (t === 'text') b.text = ''; else b.rows = [SH_NEW[t][1]()]; x.c.sheet.blocks.push(b); shTouch(x.c, true, `.sh-title[data-b="${x.c.sheet.blocks.length - 1}"]`); },
+  'sh-del-block': async el => { const x = shCtx(el); if (!x || !x.b) return; if (await confirmDialog(`Удалить раздел «${esc(x.b.title || SH_TYPES[x.b.t])}» со всем, что в нём записано?`)) { x.c.sheet.blocks.splice(x.c.sheet.blocks.indexOf(x.b), 1); shTouch(x.c, true); } },
+  'sh-move-block': el => { const x = shCtx(el); if (!x || !x.b) return; const a = x.c.sheet.blocks, j = x.bi + +el.dataset.v; if (j < 0 || j >= a.length) return; [a[x.bi], a[j]] = [a[j], a[x.bi]]; shTouch(x.c, true); },
+  'sh-numbered': el => { const x = shCtx(el); if (!x || !x.b) return; x.b.numbered = !x.b.numbered; shTouch(x.c, true); },
+  'sh-box': el => { const x = shCtx(el); if (!x || !x.row) return; const i = +el.dataset.i; x.row.boxes[i] = x.row.boxes[i] ? 0 : 1; el.classList.toggle('on', !!x.row.boxes[i]); el.setAttribute('aria-pressed', !!x.row.boxes[i]); shTouch(x.c); },
+  'sh-box-n': el => { const x = shCtx(el); if (!x || !x.row) return; const bx = x.row.boxes = x.row.boxes || []; if (+el.dataset.v > 0) { if (bx.length < 12) bx.push(0); } else bx.pop(); shTouch(x.c, true); },
+  'sh-step': el => { const x = shCtx(el); if (!x || !x.row) return; x.row.n = (+x.row.n || 0) + +el.dataset.v; const i = $(`.sh-n[data-b="${x.bi}"][data-r="${x.ri}"]`, el.closest('.sh-win')); if (i) i.value = x.row.n; shTouch(x.c); },
+  'sh-roll': el => { const x = shCtx(el); if (!x || !x.row || BV.rolling) return; BV.mod = +x.row.n || 0; rollDice(x.c.name + (x.row.k ? ' · ' + x.row.k : '')); },
+  'sh-cast-menu': el => {
+    const all = campChars(), on = new Set(castOf(BV.b).map(c => c.id));
+    openMenu(el, `<div class="menu-label">Чьи портреты на этой доске</div>` + (all.map(c => `<button class="${on.has(c.id) ? 'on' : ''}" data-act="sh-cast-toggle" data-id="${esc(c.id)}">${avatar(c)}<span>${esc(c.name)}${c.secret ? ' (скрыт)' : ''}</span>${on.has(c.id) ? ic('check') : ''}</button>`).join('') || `<p class="menu-note">В кампании пока нет персонажей. Добавьте их в разделе «Персонажи».</p>`), true);
+  },
+  'sh-cast-toggle': el => {
+    const b = BV.b, ids = castOf(b).map(c => c.id), id = el.dataset.id;
+    b.cast = ids.includes(id) ? ids.filter(v => v !== id) : [...ids, id]; boardTouch(); railRender();
+    const btn = $('[data-act="sh-cast-menu"]'); if (btn) ACT['sh-cast-menu'](btn);
+  },
+});
+
+const EDIT_ACTS = new Set(['new', 'edit', 'edit-campaign', 'new-campaign', 'del-campaign', 'create-menu', 'export', 'import', 'share', 'share-go', 'publish', 'publish-go', 'copy-link', 'owner-logout', 'sync-retry', 'bg', 'bg-set', 'bg-dim', 'bg-upload', 'b-tool', 'b-color', 'b-size', 'b-add-menu', 'b-upload', 'b-journal', 'b-pick', 'b-undo', 'b-clear', 'b-new', 'b-settings', 'b-save', 'b-del', 'b-lock', 'b-order', 'b-remove', 'sh-edit', 'sh-menu', 'sh-secret', 'sh-tpl', 'sh-add-row', 'sh-del-row', 'sh-add-block', 'sh-del-block', 'sh-move-block', 'sh-numbered', 'sh-box', 'sh-box-n', 'sh-step', 'sh-cast-menu', 'sh-cast-toggle']);
 
 document.addEventListener('click', e => {
   if (menuEl && !e.target.closest('.menu') && !e.target.closest('[data-act$="-menu"]')) closeMenu();
@@ -2557,6 +2970,7 @@ document.addEventListener('input', e => {
   if (F && t.dataset.k && t.closest('#form')) { F.draft[t.dataset.k] = t.type === 'checkbox' ? t.checked : t.value; F.dirty = true; }
 });
 document.addEventListener('focusin', e => { if (e.target.id === 'search-in') renderSearch(); });
+document.addEventListener('input', e => { if (e.target.id === 'dice-name') Live.setName(e.target.value); });
 document.addEventListener('keydown', e => {
   const t = e.target;
   if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k' || (e.ctrlKey || e.metaKey) && e.code === 'KeyK') { e.preventDefault(); if (!F) { const i = $('#search-in'); if (i) { i.focus(); i.select(); } } return; }
@@ -2697,6 +3111,7 @@ async function boot() {
   route = parsePath(location.hash);
   render(true);
   if (bootNote) toast(bootNote, 6000);
+  if (ONLINE) Live.start();
   if (ONLINE && !OWNER) setInterval(() => { if (route.view === 'board' && !document.hidden) refreshViewer(false); }, 120000);   // зрителю доска сама подтягивает свежую версию
 }
 boot();
