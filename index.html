@@ -714,6 +714,78 @@ button.b-name:hover { background: var(--surface-2); }
 .rail-p .nm { position: absolute; left: 0; right: 0; bottom: 0; padding: 9px 3px 2px; font-size: 10.5px; font-weight: 700; line-height: 1.2; color: #fff; text-align: center; background: linear-gradient(transparent, rgba(0,0,0,.82)); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .rail-p:hover { border-color: var(--muted); transform: translateX(-2px); }
 .rail-p.on { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent-soft); }
+.rail-row { position: relative; flex: none; display: flex; }
+/* Жетоны судьбы: мини-жетон на портрете и ряд жетонов слева от него. Сами жетоны пока заготовки — круглые формы под будущую картинку. */
+.fp-mini { position: absolute; left: 4px; top: 4px; width: 19px; height: 19px; border-radius: 50%; padding: 0; background: radial-gradient(circle at 35% 30%, var(--surface-2), var(--surface)); border: 1.5px solid var(--accent); box-shadow: inset 0 0 0 2px var(--surface), inset 0 0 0 3px var(--accent-soft), 0 1px 4px rgba(0,0,0,.6); opacity: .9; transition: transform .1s, opacity .1s; }
+.fp-mini::after { content: ""; position: absolute; inset: -6px; }
+.fp-mini.on { background: var(--accent); box-shadow: inset 0 0 0 2px var(--accent), inset 0 0 0 3px rgba(0,0,0,.35), 0 1px 4px rgba(0,0,0,.6); opacity: 1; }
+@media (hover: hover) { .fp-mini:hover { transform: scale(1.18); opacity: 1; } }
+#b-fate { position: absolute; inset: 0; z-index: 40; pointer-events: none; overflow: hidden; }
+.fp-tray { --fp: 50px; position: absolute; display: flex; align-items: center; gap: 8px; pointer-events: auto; }
+.fp-toks { display: flex; align-items: center; padding-left: 2px; }
+.fp-tok { width: var(--fp); height: var(--fp); flex: none; border-radius: 50%; background: radial-gradient(circle at 34% 28%, var(--surface-2), var(--surface) 72%); border: 2px solid var(--accent); box-shadow: inset 0 0 0 4px var(--surface), inset 0 0 0 5px var(--border), 0 3px 9px rgba(0,0,0,.5); }
+.fp-tok + .fp-tok { margin-left: calc(var(--fp) * (var(--q, 1.12) - 1)); }
+.fp-ctl { display: flex; flex-direction: column; gap: 4px; }
+.fp-btn { width: 22px; height: 22px; display: grid; place-items: center; border-radius: 50%; padding: 0; background: var(--surface); border: 1px solid var(--border); color: var(--muted); box-shadow: 0 2px 6px rgba(0,0,0,.4); }
+.fp-btn svg { width: 12px; height: 12px; }
+.fp-btn:disabled { opacity: .4; }
+@media (hover: hover) { .fp-btn:not(:disabled):hover { color: var(--text); border-color: var(--accent); } }
+.fp-btn:not(:disabled):active { transform: scale(.92); }
+.fp-note, .fp-more { padding: 4px 10px; border-radius: 99px; background: var(--surface); border: 1px solid var(--border); font-size: 12px; color: var(--muted); white-space: nowrap; box-shadow: 0 2px 6px rgba(0,0,0,.4); }
+.fp-more { padding: 3px 8px; color: var(--text); font-weight: 700; }
+@keyframes fp-in { from { opacity: 0; transform: translateX(34px) scale(.55); } }
+@keyframes fp-pop { from { opacity: 0; transform: scale(.4); } 60% { transform: scale(1.12); } }
+.fp-tray.in .fp-tok { animation: fp-in .3s cubic-bezier(.2,.8,.3,1) backwards; animation-delay: calc(var(--i) * 35ms); }
+.fp-tray.in .fp-ctl, .fp-tray.in .fp-note, .fp-tray.in .fp-more { animation: fp-in .22s ease-out backwards; }
+.fp-tray.add .fp-tok:first-child { animation: fp-pop .28s ease-out backwards; }
+[data-theme="rome"] .fp-tok { background: radial-gradient(circle at 34% 28%, #6b5230, #3a2c1a 72%); border-color: #c9a25a; box-shadow: inset 0 0 0 4px #2a2018, inset 0 0 0 5px #8a6a36, 0 3px 9px rgba(0,0,0,.65); }
+[data-theme="rome"] .fp-mini { border-color: #c9a25a; background: radial-gradient(circle at 34% 28%, #6b5230, #2a2018); }
+[data-theme="rome"] .fp-mini.on { background: radial-gradient(circle at 34% 28%, #f0d28a, #b98a3c); }
+/* Место персонажа: ссылка и выезжающее окошко */
+.place-link { display: inline-flex; align-items: center; gap: 4px; max-width: 100%; padding: 0; font: inherit; color: var(--accent); text-align: left; text-decoration: underline; text-decoration-color: var(--accent-soft); text-underline-offset: 3px; pointer-events: auto; cursor: pointer; }
+.place-link svg { width: 13px; height: 13px; flex: none; }
+.place-link span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+@media (hover: hover) { .place-link:hover { text-decoration-color: currentColor; } }
+.facts .place-link span { display: inline; font-size: inherit; text-transform: none; letter-spacing: normal; color: inherit; }
+.facts .place-link { font-weight: 500; }
+.sh-place { display: flex; align-items: baseline; gap: 10px; padding: 0 0 9px; margin-bottom: -4px; border-bottom: 1px solid var(--border); font-size: 14px; min-width: 0; }
+.sh-place > span { flex: none; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .1em; color: var(--muted); }
+.sh-place .place-link { min-width: 0; }
+.place-win { position: fixed; z-index: 55; width: min(520px, calc(100vw - 16px)); max-height: calc(100vh - 16px); display: flex; flex-direction: column; background: var(--surface); border: 1px solid var(--border); border-radius: calc(var(--radius) + 2px); box-shadow: var(--shadow); overflow: hidden; }
+@keyframes pw-l { from { opacity: 0; transform: translateX(-28px); } }
+@keyframes pw-r { from { opacity: 0; transform: translateX(28px); } }
+.place-win.from-l { animation: pw-l .22s cubic-bezier(.2,.8,.3,1); }
+.place-win.from-r { animation: pw-r .22s cubic-bezier(.2,.8,.3,1); }
+.pw-head { display: flex; align-items: center; gap: 10px; padding: 10px 10px 10px 16px; border-bottom: 1px solid var(--border); background: var(--surface-2); cursor: grab; touch-action: none; user-select: none; flex: none; }
+.pw-head:active { cursor: grabbing; }
+.pw-ttl { min-width: 0; flex: 1; }
+.pw-ttl span { display: block; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: .1em; color: var(--accent); }
+.pw-ttl h2 { margin: 1px 0 0; font: 700 21px/1.2 var(--font-head); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pw-body { padding: 14px 16px 14px; overflow-y: auto; min-height: 0; }
+.pw-img { position: relative; aspect-ratio: 16 / 9; border-radius: var(--radius); overflow: hidden; border: 1px solid var(--border); background: var(--surface-2); display: grid; place-items: center; margin-bottom: 12px; }
+.pw-img img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; display: block; cursor: zoom-in; }
+.pw-img .ph { color: var(--muted); opacity: .5; } .pw-img .ph svg { width: 44px; height: 44px; }
+.pw-more { display: inline-block; margin-top: 12px; }
+.pf-list { margin: 0; padding: 0 0 0 26px; display: grid; gap: 6px; }
+.pf-list li { padding-left: 2px; } .pf-list li::marker { color: var(--accent); font-weight: 700; font-family: var(--font-head); }
+.pf-list p { margin: 0; padding: 5px 0; line-height: 1.45; }
+.pf-in { display: block; width: 100%; min-height: 34px; resize: none; overflow: hidden; font: inherit; font-size: 15px; line-height: 1.45; color: var(--text); background: var(--bg); border: 1px solid var(--border); border-radius: 6px; padding: 5px 9px; }
+.pf-in:focus { outline: none; border-color: var(--accent); }
+.pf-in::placeholder { color: var(--muted); opacity: .55; }
+.pf-add { margin: 6px 0 0 26px; padding: 2px 4px; font-size: 12.5px; color: var(--muted); }
+@media (hover: hover) { .pf-add:hover { color: var(--accent); } }
+.pf-none { margin: 0; }
+.section.pf-sec { margin-bottom: 22px; }
+[data-theme="rome"] .place-win { border-radius: 1px; border-color: #6a5334; background: var(--grain), linear-gradient(180deg, #221a13, #18130e); box-shadow: inset 0 0 0 2px #120e0a, inset 0 0 0 3px #3d2f1e, 0 14px 34px rgba(0,0,0,.7); }
+[data-theme="rome"] .pw-head { background: var(--veins-light) -80px -30px / 420px 260px, linear-gradient(180deg, #3a2f24, #261e16); border-bottom-color: #6a5334; margin: 3px 3px 0; }
+[data-theme="rome"] .pw-ttl h2 { font-weight: 400; letter-spacing: .05em; text-transform: uppercase; }
+[data-theme="rome"] .pw-img, [data-theme="rome"] .pf-in { border-radius: 1px; }
+[data-theme="rome"] .pf-in, [data-theme="rome"] .pf-list p { font-family: var(--font-read); }
+/* Связи персонажей */
+.rels { display: grid; gap: 8px; justify-items: start; }
+.rel-row { display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 3fr) auto; gap: 8px; align-items: center; width: 100%; }
+.rel-h { margin: 16px 0 8px; font-size: 11.5px; font-weight: 600; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); }
+.rel .mini .small { white-space: normal; }
 .rail-none { width: 66px; font-size: 11.5px; line-height: 1.3; color: var(--muted); text-align: center; }
 .sh-win { position: absolute; display: flex; flex-direction: column; min-width: 260px; min-height: 140px; max-width: 100%; background: var(--surface); border: 1px solid var(--border); border-radius: calc(var(--radius) + 2px); box-shadow: var(--shadow); overflow: hidden; resize: both; }
 .sh-win.min { height: auto !important; min-height: 0; resize: none; }
@@ -831,6 +903,9 @@ span.sh-name { padding: 3px 0; }
 @media (max-width: 760px) {
   .b-top { left: 8px; top: 8px; }
   .b-rail { right: 8px; top: 8px; max-height: calc(100% - 150px); } .rail-p, .rail-none { width: 50px; } .rail-p { height: 50px; }
+  .b-top { max-width: calc(100% - 86px); } .b-view { font-size: 0; gap: 0; padding: 5px 7px; } .b-view svg { width: 14px; height: 14px; }
+  .fp-tray { --fp: 38px; gap: 6px; } .fp-mini { left: 3px; top: 3px; width: 17px; height: 17px; }
+  .rel-row { grid-template-columns: minmax(0, 1fr) auto; } .rel-row select { grid-column: 1 / -1; }
   .sh-k { width: 84px; } .b-tools { left: 8px; top: 62px; } .b-pen { left: 60px; top: 62px; }
   .b-zoom { display: none; }
   .dice-panel { left: 8px; right: 8px; bottom: 8px; max-width: none; }
@@ -838,7 +913,7 @@ span.sh-name { padding: 3px 0; }
   .b-empty { width: calc(100% - 120px); font-size: 13.5px; }
   .b-name span { max-width: 150px; }
 }
-@media (prefers-reduced-motion: reduce) { .dice-banner, .dice-stage { transition: none; } }
+@media (prefers-reduced-motion: reduce) { .dice-banner, .dice-stage { transition: none; } .fp-tray *, .place-win { animation: none !important; } }
 
 </style>
 </head>
@@ -938,10 +1013,11 @@ const FIELDS = {
     { k: 'name', label: 'Имя', type: 'text', span: 4, req: true },
     { k: 'kind', label: 'Тип', type: 'select', span: 2, options: KIND },
     { k: 'role', label: 'Кто это', type: 'text', span: 3, ph: 'Журналистка, смотритель маяка…' },
-    { k: 'aliases', label: 'Как ещё называют в заметках', type: 'text', span: 3, ph: 'Через запятую: Вера, Лановая' },
+    { k: 'place', label: 'Место', type: 'select', span: 3, options: () => ({ '': '— не указано —', ...Object.fromEntries(list('locations').sort((a, b) => a.name.localeCompare(b.name, 'ru')).map(l => [l.id, esc(l.name)])) }) },
     { k: 'player', label: 'Игрок', type: 'text', span: 3, ph: 'Кто играет этим персонажем' },
     { k: 'status', label: 'Статус', type: 'select', span: 3, options: CSTATUS },
     { k: 'body', label: 'Описание', type: 'rich', rows: 6, ph: 'Внешность, характер, предыстория' },
+    { k: 'relations', label: 'Связи с другими персонажами', type: 'rels', help: 'Кем другой персонаж приходится этому. На странице того персонажа связь тоже будет видна.' },
     { k: 'notes', label: 'Личные заметки и догадки', type: 'area', rows: 3, ph: 'Что о нём известно, что он скрывает, чего хочет', help: 'На сайте в интернете это поле видите только вы.' },
     { k: 'portrait', label: 'Портрет', type: 'image' },
     { k: 'images', label: 'Другие картинки', type: 'images' },
@@ -973,8 +1049,8 @@ const FIELDS = {
 const DEFAULTS = {
   campaigns: () => ({ name: '', system: '', genre: '', body: '', cover: null }),
   sessions: () => ({ title: '', number: nextNumber(), date: today(), body: '', characters: [], locations: [], threads: [], images: [] }),
-  characters: () => ({ name: '', kind: 'npc', role: '', aliases: '', player: '', status: '', body: '', notes: '', portrait: null, images: [] }),
-  locations: () => ({ name: '', kind: '', aliases: '', body: '', image: null, images: [] }),
+  characters: () => ({ name: '', kind: 'npc', role: '', aliases: '', player: '', status: '', body: '', notes: '', portrait: null, images: [], relations: [], place: '' }),
+  locations: () => ({ name: '', kind: '', aliases: '', body: '', image: null, images: [], facts: ['', ''] }),
   threads: () => ({ title: '', status: 'open', body: '', characters: [] }),
   notes: () => ({ title: '', body: '', pinned: false }),
 };
@@ -1074,6 +1150,7 @@ function normalize(st) {
   if (!st.campaigns.some(c => c.id === st.settings.campaign)) st.settings.campaign = st.campaigns[0] ? st.campaigns[0].id : null;
   if (!THEMES.some(t => t.id === st.settings.theme)) st.settings.theme = 'midnight';
   if (!st.files || typeof st.files !== 'object') st.files = {};
+  st.locations.forEach(l => { l.facts = cleanFacts(l.facts, true); });
   st.boards = (Array.isArray(st.boards) ? st.boards : []).filter(b => b && b.id).map(b => Object.assign(b, { name: b.name || 'Доска', items: Array.isArray(b.items) ? b.items : [], strokes: Array.isArray(b.strokes) ? b.strokes.filter(x => x && Array.isArray(x.p) && x.p.length >= 2) : [] }));
   return st;
 }
@@ -1305,6 +1382,94 @@ function viewCharacters() {
     + (shown.length ? `<div class="grid people">${shown.map(charCard).join('')}</div>` : `<div class="empty sm"><p>В этой группе пока никого.</p></div>`);
 }
 
+/* Связи: свои («кто мне этот человек») и чужие, где упомянут этот персонаж. */
+/* ═════════ Место персонажа: ссылка и выезжающее окошко с картинкой и фактами ═════════ */
+const FACTS_MAX = 8;
+function cleanFacts(v, trim) {
+  const a = (Array.isArray(v) ? v : []).slice(0, FACTS_MAX).map(x => String(x == null ? '' : x).slice(0, 400));
+  if (trim) while (a.length > 2 && !a[a.length - 1].trim()) a.pop();
+  while (a.length < 2) a.push('');
+  return a;
+}
+const placeOf = c => (c && c.place && list('locations').find(l => l.id === c.place)) || null;
+const placeLink = c => { const l = placeOf(c); return l ? `<button type="button" class="place-link" data-act="place-open" data-id="${esc(l.id)}" title="Открыть окошко места">${ic('pin')}<span>${esc(l.name)}</span></button>` : ''; };
+const placeRO = () => READONLY && !HOSTED;
+function factsHtml(l) {
+  const f = cleanFacts(l.facts), ro = placeRO(), id = esc(l.id);
+  if (ro) { const shown = f.filter(x => x.trim()); return shown.length ? `<ol class="pf-list ro">${shown.map(x => `<li><p>${esc(x)}</p></li>`).join('')}</ol>` : `<p class="muted pf-none">Пока ничего не записано.</p>`; }
+  return `<ol class="pf-list">${f.map((x, i) => `<li><textarea class="pf-in" data-pf="${i}" data-loc="${id}" rows="1" maxlength="400" placeholder="Факт или аспект" aria-label="Факт или аспект ${i + 1}">${esc(x)}</textarea></li>`).join('')}</ol>${f.length < FACTS_MAX ? `<button type="button" class="pf-add" data-act="pf-add" data-id="${id}">+ строка</button>` : ''}`;
+}
+const PW = { id: null, x: 0, y: 0, side: 1, drag: null };
+function placeHtml(l) {
+  const src = l.image && IMG[l.image];
+  return `<header class="pw-head"><div class="pw-ttl"><span>${esc(l.kind || 'Место')}</span><h2>${esc(l.name)}</h2></div><button class="icon-btn" data-act="place-close" aria-label="Закрыть" title="Закрыть">${ic('x')}</button></header>
+    <div class="pw-body"><div class="pw-img">${src ? `<img src="${esc(src)}" alt="" data-act="zoom" data-set="locations/${esc(l.id)}" data-i="0">` : `<span class="ph">${ic('pin')}</span>`}</div>
+    <div class="pf-sec" data-loc="${esc(l.id)}">${factsHtml(l)}</div>
+    <a class="textlink pw-more" ${nav('locations/' + l.id)}>Открыть страницу места</a></div>`;
+}
+function placeClose() { PW.id = null; PW.drag = null; const el = $('#place-win'); if (el) el.remove(); }
+/* Перерисовать окошко, не сбивая набор: поле, в котором печатают, остаётся как есть. */
+function placeRender(force) {
+  const el = $('#place-win'); if (!el || !PW.id) return;
+  const l = S.locations.find(x => x.id === PW.id && x.campaignId === cid()); if (!l) return placeClose();
+  const a = document.activeElement;
+  if (!force && a && el.contains(a) && a.dataset.pf != null) return factsSync(l);
+  const top = ($('.pw-body', el) || {}).scrollTop || 0; el.innerHTML = placeHtml(l); el.setAttribute('aria-label', 'Место: ' + l.name);
+  $$('textarea', el).forEach(shGrow); $('.pw-body', el).scrollTop = top;
+}
+function placeOpen(id, anchor) {
+  const l = S.locations.find(x => x.id === id && x.campaignId === cid()); if (!l) return;
+  if (PW.id === id && $('#place-win')) return placeClose();
+  placeClose(); PW.id = id;
+  const el = document.createElement('aside'); el.id = 'place-win'; el.className = 'place-win'; el.setAttribute('role', 'dialog');
+  document.body.append(el); placeRender(true);
+  const box = anchor && (anchor.closest('.sh-win, .side, .card') || anchor), r = box ? box.getBoundingClientRect() : { left: innerWidth, right: innerWidth, top: 84 };
+  const main = $('.main'), minX = main && innerWidth > 760 ? main.getBoundingClientRect().left + 8 : 8, full = el.offsetWidth;
+  const roomL = r.left - 14 - minX, roomR = innerWidth - 8 - r.right - 14;      // встаём рядом с тем, откуда открыли, не накрывая его; тесно — окошко чуть уже
+  PW.side = roomR >= full && ((r.left + r.right) / 2 < innerWidth / 2 || roomL < full) || (roomL < full && roomR > roomL) ? 1 : -1;
+  const w = Math.min(full, Math.max(Math.min(380, full), PW.side > 0 ? roomR : roomL)); el.style.width = w + 'px'; $$('textarea', el).forEach(shGrow);
+  PW.x = PW.side > 0 ? r.right + 14 : r.left - 14 - w; PW.y = r.top;
+  placeClamp(el); el.classList.add(PW.side > 0 ? 'from-l' : 'from-r');
+}
+function placeClamp(el) {
+  PW.x = Math.round(clamp(PW.x, 8, Math.max(8, innerWidth - el.offsetWidth - 8))); PW.y = Math.round(clamp(PW.y, 8, Math.max(8, innerHeight - el.offsetHeight - 8)));
+  el.style.left = PW.x + 'px'; el.style.top = PW.y + 'px';
+}
+/* Значения фактов поменялись (пришли от других или набраны в соседнем поле) — подставляем на месте. */
+function factsSync(l, skip, force) {
+  const f = cleanFacts(l.facts);
+  for (const sec of $$('.pf-sec').filter(n => n.dataset.loc === l.id)) {
+    const ins = $$('.pf-in', sec);
+    if (placeRO() || ins.length !== f.length) { if (force || !sec.contains(document.activeElement) || placeRO()) { sec.innerHTML = (sec.closest('#place-win') ? '' : '<h2>Факты и аспекты</h2>') + factsHtml(l); $$('textarea', sec).forEach(shGrow); } continue; }
+    ins.forEach((n, i) => { if (n !== skip && n !== document.activeElement && n.value !== f[i]) { n.value = f[i]; shGrow(n); } });
+  }
+}
+/* Ведущий появился или пропал: поля фактов у игрока становятся доступными или только для чтения. */
+function placeHost() { placeRender(); $$('.pf-sec').forEach(sec => { const l = S.locations.find(x => x.id === sec.dataset.loc); if (l) factsSync(l); }); }
+function locTouch(l, i) { l.updatedAt = Date.now(); save(5000); Live.loc(l, i); }
+document.addEventListener('input', e => {
+  const t = e.target; if (!t.dataset || t.dataset.pf == null || placeRO()) return;
+  const l = S.locations.find(x => x.id === t.dataset.loc), i = +t.dataset.pf; if (!l || !(i >= 0 && i < FACTS_MAX)) return;
+  l.facts = cleanFacts(l.facts); while (l.facts.length <= i) l.facts.push('');
+  l.facts[i] = t.value.replace(/\n/g, ' ').slice(0, 400); shGrow(t); factsSync(l, t); locTouch(l, i);
+});
+document.addEventListener('keydown', e => { if (e.key === 'Enter' && e.target.dataset && e.target.dataset.pf != null) { e.preventDefault(); const all = $$('.pf-in', e.target.closest('.pf-sec')), n = all[all.indexOf(e.target) + 1]; if (n) n.focus(); else e.target.blur(); } });
+document.addEventListener('pointerdown', e => {
+  const head = e.target.closest && e.target.closest('.pw-head'); if (!head || e.button || e.target.closest('button, a')) return;
+  e.preventDefault(); try { head.setPointerCapture(e.pointerId); } catch (err) { /* не страшно */ }
+  PW.drag = { id: e.pointerId, dx: e.clientX - PW.x, dy: e.clientY - PW.y };
+});
+document.addEventListener('pointermove', e => { const d = PW.drag, el = d && $('#place-win'); if (!el || d.id !== e.pointerId) return; PW.x = e.clientX - d.dx; PW.y = e.clientY - d.dy; placeClamp(el); });
+for (const ev of ['pointerup', 'pointercancel']) document.addEventListener(ev, e => { if (PW.drag && PW.drag.id === e.pointerId) PW.drag = null; });
+window.addEventListener('resize', () => { const el = $('#place-win'); if (el) placeClamp(el); });
+function relSection(c) {
+  const all = list('characters');
+  const out = (c.relations || []).map(r => ({ o: all.find(o => o.id === r.to), text: r.text })).filter(x => x.o);
+  const inc = all.filter(o => o.id !== c.id).flatMap(o => (o.relations || []).filter(r => r.to === c.id).map(r => ({ o, text: r.text ? c.name + ' — ' + r.text : '' })));
+  if (!out.length && !inc.length) return READONLY ? '' : `<div class="section"><h2>Связи</h2><p class="muted">Связей пока нет. Добавить их можно кнопкой «Изменить», в поле «Связи с другими персонажами».</p></div>`;
+  const row = x => `<a class="mini" ${nav('characters/' + x.o.id)}>${avatar(x.o, 'md')}<div><div class="mini-t">${esc(x.o.name)}</div>${x.text ? `<div class="small muted">${esc(x.text)}</div>` : ''}</div></a>`;
+  return `<div class="section rel" id="rels"><h2>Связи</h2>${out.length ? `<div class="card pad"><div class="mini-list">${out.map(row).join('')}</div></div>` : ''}${inc.length ? `<h3 class="rel-h">В глазах других</h3><div class="card pad"><div class="mini-list">${inc.map(row).join('')}</div></div>` : ''}</div>`;
+}
 function viewCharacter(c) {
   const src = c.portrait && IMG[c.portrait];
   const ses = sessionsWith('characters', c.id), thr = list('threads').filter(t => (t.characters || []).includes(c.id));
@@ -1314,13 +1479,14 @@ function viewCharacter(c) {
   <div class="detail left">
     <aside class="side">
       <div class="portrait">${src ? `<img src="${src}" alt="${esc(c.name)}" data-act="zoom" data-set="characters/${c.id}" data-i="0">` : `<span class="ph">${esc(initials(c.name))}</span>`}</div>
-      <div class="card"><div class="facts">${fact('Тип', KIND[c.kind])}${fact('Игрок', c.kind === 'pc' ? c.player : '')}${fact('Статус', c.status ? CSTATUS[c.status] : '')}${fact('Также', c.aliases)}${fact('Появлений в сессиях', String(ses.length))}</div></div>
+      <div class="card"><div class="facts">${fact('Тип', KIND[c.kind])}${fact('Игрок', c.kind === 'pc' ? c.player : '')}${fact('Статус', c.status ? CSTATUS[c.status] : '')}${placeOf(c) ? `<div><span>Место</span><b>${placeLink(c)}</b></div>` : ''}${fact('Также', c.aliases)}${fact('Появлений в сессиях', String(ses.length))}</div></div>
     </aside>
     <div>
       <div class="page-head"><div><div class="eyebrow">${esc(c.role || (c.kind === 'pc' ? 'Персонаж игрока' : 'НИП'))}</div><h1>${esc(c.name)}</h1>${c.secret ? `<div class="sub">${lockPill(c)}</div>` : ''}</div>
         ${READONLY ? '' : `<div class="actions"><button class="btn" data-act="edit" data-type="characters" data-id="${c.id}">${ic('edit')}Изменить</button></div>`}</div>
       ${proseOr(c.body, c.id, 'Описания пока нет.')}
       ${c.notes && c.notes.trim() ? `<div class="section"><h2>Личные заметки и догадки</h2><div class="prose sm">${rich(c.notes, c.id)}</div></div>` : ''}
+      ${relSection(c)}
       ${extra.length ? `<div class="section"><h2>Картинки</h2>${shots('characters/' + c.id, imageSet('characters/' + c.id))}</div>` : ''}
       <div class="section"><h2>Появления в сессиях</h2>${ses.length ? `<div class="card pad"><div class="mini-list">${ses.map(miniSession).join('')}</div></div>` : `<p class="muted">${ro('Пока не отмечен ни в одной сессии. Отметить можно при редактировании сессии, в поле «Кто участвовал».', 'Пока не отмечен ни в одной сессии.')}</p>`}</div>
       ${thr.length ? `<div class="section"><h2>Сюжетные линии</h2><div class="card pad"><div class="mini-list">${thr.map(t => `<a class="mini" ${nav('threads/' + t.id)}>${ic('thread')}<div><div class="mini-t">${esc(t.title)}</div></div>${threadPill(t)}</a>`).join('')}</div></div></div>` : ''}
@@ -1341,7 +1507,9 @@ function viewLocation(l) {
   const set = imageSet('locations/' + l.id), extra = (l.images || []).filter(i => IMG[i]);
   return detailHead('locations', l, esc(l.kind || 'Место'), l.name, l.aliases ? 'Также: ' + esc(l.aliases) : '') + `
     ${src ? `<div class="place-hero"><img src="${src}" alt="" data-act="zoom" data-set="locations/${l.id}" data-i="0"></div>` : ''}
+    <div class="section pf-sec" data-loc="${esc(l.id)}"><h2>Факты и аспекты</h2>${factsHtml(l)}</div>
     ${proseOr(l.body, l.id, 'Описания пока нет.')}
+    ${(who => who.length ? `<div class="section"><h2>Кто здесь</h2><div class="card pad"><div class="mini-list">${who.map(c => `<a class="mini" ${nav('characters/' + c.id)}>${avatar(c, 'md')}<div><div class="mini-t">${esc(c.name)}</div>${c.role ? `<div class="small muted">${esc(c.role)}</div>` : ''}</div></a>`).join('')}</div></div></div>` : '')(list('characters').filter(c => c.place === l.id).sort((a, b) => a.name.localeCompare(b.name, 'ru')))}
     ${extra.length ? `<div class="section"><h2>Картинки</h2>${shots('locations/' + l.id, set)}</div>` : ''}
     <div class="section"><h2>Что здесь происходило</h2>${ses.length ? `<div class="card pad"><div class="mini-list">${ses.map(miniSession).join('')}</div></div>` : `<p class="muted">Пока не отмечено ни в одной сессии.</p>`}</div>`;
 }
@@ -1438,14 +1606,14 @@ function renderView(resetScroll) {
   $('.main').classList.toggle('board-mode', onBoard); if (onBoard) boardMount();
   sc.scrollTop = resetScroll || onBoard ? 0 : top;
 }
-function render(resetScroll) { renderSidebar(); renderView(resetScroll); applyBg(); }
+function render(resetScroll) { renderSidebar(); renderView(resetScroll); applyBg(); placeRender(); }
 function applyTheme() { document.documentElement.dataset.theme = S.settings.theme; }
 
 function parsePath(p) { const [view, id] = String(p || '').replace(/^#?\/?/, '').split('/'); return { view: LIST[view] ? view : 'home', id: view === 'board' ? null : id || null }; }
 function go(path, replace) {
   route = parsePath(path);
   try { history[replace ? 'replaceState' : 'pushState'](null, '', '#/' + path); } catch (e) { /* в предпросмотре адрес менять нельзя — не страшно */ }
-  closeMenu(); closeSearch(); closeLightbox();
+  closeMenu(); closeSearch(); closeLightbox(); placeClose();
   render(true);
 }
 window.addEventListener('popstate', () => { if (!S) return; route = parsePath(location.hash); closeMenu(); closeLightbox(); render(true); });
@@ -1534,7 +1702,7 @@ function fieldHtml(f) {
     case 'text': return `${lab}<input class="inp" id="${id}" data-k="${f.k}" type="text" value="${esc(v)}" placeholder="${esc(f.ph || '')}" autocomplete="off">`;
     case 'number': return `${lab}<input class="inp" id="${id}" data-k="${f.k}" type="number" min="0" step="1" value="${esc(v)}">`;
     case 'date': return `${lab}<input class="inp" id="${id}" data-k="${f.k}" type="date" value="${esc(v)}">`;
-    case 'select': return `${lab}<select class="inp" id="${id}" data-k="${f.k}">${Object.entries(f.options).map(([k, t]) => `<option value="${k}" ${String(v || '') === k ? 'selected' : ''}>${t}</option>`).join('')}</select>`;
+    case 'select': return `${lab}<select class="inp" id="${id}" data-k="${f.k}">${Object.entries(typeof f.options === 'function' ? f.options() : f.options).map(([k, t]) => `<option value="${k}" ${String(v || '') === k ? 'selected' : ''}>${t}</option>`).join('')}</select>`;
     case 'area': return `${lab}<textarea class="inp" id="${id}" data-k="${f.k}" rows="${f.rows || 4}" placeholder="${esc(f.ph || '')}">${esc(v)}</textarea>${f.help ? `<div class="help">${f.help}</div>` : ''}`;
     case 'rich': return `${lab}<div class="rich-bar" data-for="${id}"><button type="button" data-act="fmt" data-v="bold" title="Жирный"><b>Ж</b></button><button type="button" data-act="fmt" data-v="italic" title="Курсив"><i>К</i></button><button type="button" data-act="fmt" data-v="head" title="Подзаголовок">Заголовок</button><button type="button" data-act="fmt" data-v="list" title="Список">• Список</button><button type="button" data-act="fmt" data-v="quote" title="Цитата">❝ Цитата</button></div>
       <textarea class="inp read" id="${id}" data-k="${f.k}" rows="${f.rows || 8}" placeholder="${esc(f.ph || '')}">${esc(v)}</textarea>${F.type === 'sessions' || F.type === 'notes' ? `<div class="help">Имена персонажей и названия мест в тексте сами превратятся в ссылки.</div>` : ''}`;
@@ -1542,6 +1710,11 @@ function fieldHtml(f) {
     case 'links': {
       const opts = list(f.of).sort((a, b) => titleOf(f.of, a).localeCompare(titleOf(f.of, b), 'ru')).filter(o => o.id !== F.draft.id);
       return `<div class="lab">${f.label}</div><div class="picker">${opts.map(o => `<button type="button" class="tg ${f.of === 'characters' ? '' : 'noav'} ${(v || []).includes(o.id) ? 'on' : ''}" data-act="toggle-link" data-k="${f.k}" data-id="${o.id}">${f.of === 'characters' ? avatar(o) : ''}${esc(titleOf(f.of, o))}</button>`).join('')}<input class="quick" data-quick="${f.k}" data-of="${f.of}" placeholder="＋ ${f.quick}" aria-label="${f.quick}" autocomplete="off"></div>`;
+    }
+    case 'rels': {
+      const opts = list('characters').filter(o => o.id !== F.draft.id).sort((a, b) => a.name.localeCompare(b.name, 'ru')), rows = Array.isArray(v) ? v : [];
+      if (!opts.length) return `<div class="lab">${f.label}</div><div class="help">Пока некого связывать: в кампании нет других персонажей.</div>`;
+      return `<div class="lab">${f.label}</div><div class="rels">${rows.map((r, i) => `<div class="rel-row"><select class="inp" data-rel="${i}" data-rf="to" aria-label="Персонаж"><option value="">— кто —</option>${opts.map(o => `<option value="${o.id}" ${r.to === o.id ? 'selected' : ''}>${esc(o.name)}</option>`).join('')}</select><input class="inp" data-rel="${i}" data-rf="text" type="text" value="${esc(r.text || '')}" placeholder="покровитель, должник, враг…" aria-label="Кем приходится" autocomplete="off" maxlength="300"><button type="button" class="icon-btn" data-act="rel-del" data-i="${i}" aria-label="Убрать связь" title="Убрать связь">${ic('x')}</button></div>`).join('')}<button type="button" class="btn sm ghost" data-act="rel-add">${ic('plus')}Добавить связь</button></div><div class="help">${f.help}</div>`;
     }
     case 'image': {
       const src = v && IMG[v];
@@ -1564,6 +1737,8 @@ function saveForm() {
   const req = FIELDS[type].find(f => f.req);
   if (req && !String(draft[req.k] || '').trim()) { toast(`Заполните поле «${req.label}»`); const i = $(`#form [data-k="${req.k}"]`); if (i) i.focus(); return; }
   for (const k in draft) if (typeof draft[k] === 'string' && k !== 'body' && k !== 'notes') draft[k] = draft[k].trim();
+  if (type === 'characters' && draft.place && !byId('locations', draft.place)) draft.place = '';
+  if (type === 'characters') draft.relations = (Array.isArray(draft.relations) ? draft.relations : []).filter(r => r && r.to && r.to !== draft.id && byId('characters', r.to)).map(r => ({ to: r.to, text: String(r.text || '').trim().slice(0, 300) }));
   if (type === 'sessions') { const n = parseInt(draft.number, 10); draft.number = Number.isFinite(n) ? n : nextNumber(); }
   draft.updatedAt = Date.now();
   if (isNew) {
@@ -1583,7 +1758,8 @@ async function deleteFromForm() {
   S[type] = S[type].filter(e => e.id !== draft.id);
   if (type !== 'sessions' && type !== 'notes') {
     S.sessions.forEach(s => { if (s[type]) s[type] = s[type].filter(i => i !== draft.id); });
-    if (type === 'characters') S.threads.forEach(t => { t.characters = (t.characters || []).filter(i => i !== draft.id); });
+    if (type === 'locations') S.characters.forEach(c => { if (c.place === draft.id) c.place = ''; });
+    if (type === 'characters') { S.threads.forEach(t => { t.characters = (t.characters || []).filter(i => i !== draft.id); }); S.characters.forEach(c => { if (c.relations) c.relations = c.relations.filter(r => r.to !== draft.id); }); }
   }
   closeForm(true); save(); go(type); toast('Удалено');
 }
@@ -1775,6 +1951,7 @@ function filterState(src, o = {}) {
   }
   st.sessions.forEach(x => { for (const k of ['characters', 'locations', 'threads']) x[k] = (x[k] || []).filter(id => keep[k].has(id)); });
   st.threads.forEach(x => { x.characters = (x.characters || []).filter(id => keep.characters.has(id)); });
+  st.characters.forEach(x => { x.relations = (x.relations || []).filter(r => r && keep.characters.has(r.to)); if (x.place && !keep.locations.has(x.place)) x.place = ''; });
   if (!o.charNotes) st.characters.forEach(x => { x.notes = ''; });
   st.characters.forEach(x => { if (x.sheet && x.sheet.secret) delete x.sheet; });
   st.boards = (src.boards || []).filter(b => cids.has(b.campaignId) && !b.secret).map(clone);
@@ -2111,7 +2288,7 @@ function publishDone(r) {
    Записывать в журнал может только ведущий. Поэтому правки игрока уходят ведущему по прямой связи, его браузер применяет их,
    рассылает всем и сохраняет. Пока сайт у ведущего закрыт, игроки только смотрят. */
 let HOSTED = false;                                   // игрок: ведущий сейчас на связи
-const GUEST_ACTS = new Set(['b-tool', 'b-color', 'b-size', 'b-undo', 'sh-edit', 'sh-add-row', 'sh-del-row', 'sh-add-block', 'sh-del-block', 'sh-move-block', 'sh-numbered', 'sh-box', 'sh-box-n', 'sh-step']);
+const GUEST_ACTS = new Set(['b-tool', 'b-color', 'b-size', 'b-undo', 'sh-edit', 'sh-add-row', 'sh-del-row', 'sh-add-block', 'sh-del-block', 'sh-move-block', 'sh-numbered', 'sh-box', 'sh-box-n', 'sh-step', 'fp-step', 'fp-make', 'pf-add']);
 const boardRO = () => READONLY && !(HOSTED && !!BV.b && S.boards.includes(BV.b));
 const sheetRO = () => READONLY && !HOSTED;
 const sheetTyping = () => { const a = document.activeElement; return !!a && !!a.dataset && !!a.dataset.sf; };
@@ -2140,6 +2317,7 @@ function hostUi() {
   el.dataset.tool = ro ? 'move' : BV.tool; if (gt) gt.hidden = ro; if (pen) pen.hidden = ro || BV.tool !== 'pen';
   boardChrome(); boardSelUi();
   if (sheetTyping()) $$('.sh-win').forEach(w => { w.dataset.stale = '1'; }); else winsRender();
+  fateRender();
 }
 
 /* ═════════ Доска: картинки, маркер и кубики FATE ═════════ */
@@ -2191,6 +2369,7 @@ function viewBoard() {
     <div class="dice-stage" id="dice-stage"></div>
     <div id="b-wins"></div>
     ${railHtml()}
+    <div id="b-fate"></div>
     <div class="b-panel b-top">
       ${many || !READONLY ? `<button class="b-name" data-act="b-menu" title="Доски кампании"><span id="b-name">${esc(b.name)}</span>${ic('down')}</button>` : `<span class="b-name"><span id="b-name">${esc(b.name)}</span></span>`}
       <span id="b-lock"></span>
@@ -2240,7 +2419,7 @@ function boardMount() {
   svg.addEventListener('wheel', e => { e.preventDefault(); const r = boardRect(); zoomAt(e.clientX - r.left, e.clientY - r.top, Math.exp(-e.deltaY * (e.ctrlKey ? 0.01 : 0.0016))); }, { passive: false });
   svg.addEventListener('contextmenu', e => e.preventDefault());
   BV.cam = BV.cams[b.id]; if (!BV.cam) boardFit(true);
-  boardDraw(); applyCam(); boardChrome(); diceLog(); winsMount();
+  boardDraw(); applyCam(); boardChrome(); diceLog(); winsMount(); fateRender();
 }
 function boardChrome() {
   const b = BV.b, n = $('#b-name'), l = $('#b-lock'); if (!b || !n) return;
@@ -2529,7 +2708,7 @@ function applyStale() {
   if (full) { applyTheme(); render(); }
   else if ($('#board')) {
     const was = BV.b; BV.b = curBoard(); if (was && was.id !== BV.b.id) return renderView();
-    boardDraw(); boardChrome();
+    boardDraw(); boardChrome(); fateRender();
     if (BV.staleSheets && !sheetTyping()) wins().forEach(w => winRefresh(w.id));
   }
   BV.staleSheets = false;
@@ -2783,12 +2962,14 @@ const Live = {
   saved(info) {
     if (!OWNER || !info) return; this.lastSaved = info; this.bmsg({ t: 'saved', sha: info.sha, at: info.at });
     for (const [id, t] of this.shDirty) if (t <= info.at) this.shDirty.delete(id);
+    for (const [id, t] of this.locDirty) if (t <= info.at) this.locDirty.delete(id);
   },
   bhello() {
     const go = () => {
       this.helloT = 0; this.bmsg({ t: 'host' }); if (this.lastSaved) this.bmsg({ t: 'saved', ...this.lastSaved });
       for (const b of S.boards) this.bsend(b, false);
       for (const id of this.shDirty.keys()) this.shsend(id);   // листы, изменённые после последнего сохранения
+      for (const id of this.locDirty.keys()) this.locsend(id);
     };
     if (document.hidden) { if (Date.now() - (this.helloAt || 0) > 1000) { this.helloAt = Date.now(); go(); } return; }
     if (!this.helloT) this.helloT = setTimeout(go, 400);
@@ -2821,6 +3002,7 @@ const Live = {
       IMG[p.img] = p.d; this.thumbs.add(p.img); if (this.onBoard() && BV.b.items.some(it => it.img === p.img)) boardDraw(); return;
     }
     if (p.t === 'sh') return this.shrecv(p);
+    if (p.t === 'lf') return this.locrecv(p);
     if (typeof p.b !== 'string') return;
     if (p.t === 'b') return this.bapply(p);
     if (p.t === 's') { this.learn(p.add); const k = this.bkeep[p.b]; if (k) this.bapply(k, true); }
@@ -2852,7 +3034,7 @@ const Live = {
     if (this.pub && this.hostAt && quiet > 9000 && Date.now() - this.pingAt > 5000) { this.pingAt = Date.now(); this.bmsg({ t: 'ping' }); }   // давно не слышно ведущего — спрашиваем, на связи ли он
     const on = !!this.pub && quiet < 22000; if (on === HOSTED) return;
     HOSTED = on; if (!on) { this.pend = []; BV.gundo = []; }
-    hostUi();
+    hostUi(); placeHost();
   },
   /* Игрок: сделать действие у себя сразу и отправить ведущему. inv — обратное действие, для кнопки «Отменить». */
   gop(op, inv) {
@@ -2887,11 +3069,42 @@ const Live = {
   gdo(p) {
     this.acks.push(p.id); if (this.acks.length > 60) this.acks.shift();
     if (p.k === 'shf' || p.k === 'sheet') return this.shin(p);
+    if (p.k === 'lf') return this.locin(p);
     const b = S.boards.find(x => x.id === p.b); if (!this.pubBoard(b)) return;
     const cur = this.onBoard(b) && BV.b === b; if (cur) boardSnap();   // «Отменить» у ведущего отменяет и действие игрока
     const tell = () => document.hidden ? this.bsend(b, true) : this.bstate(b);
     if (!applyOp(b, p)) { if (cur) BV.undo.pop(); return tell(); }
     b.updatedAt = Date.now(); save(5000); if (cur) boardDraw(); tell();
+  },
+  /* ── Факты мест в прямом эфире: ведущий рассылает список целиком, игрок шлёт ведущему одно поле ── */
+  locDirty: new Map(), locT: {}, lfat: {}, lfkeep: {}, lfq: new Map(), lfqT: 0,
+  pubLoc(l) { return !!l && !l.secret && S.campaigns.some(c => c.id === l.campaignId); },
+  loc(l, i) {
+    if (OWNER) {
+      if (!this.pub || !this.pubLoc(l)) return;
+      this.locDirty.set(l.id, Date.now());
+      if (!this.locT[l.id]) this.locT[l.id] = setTimeout(() => { this.locT[l.id] = 0; this.locsend(l.id); }, 250);
+      return;
+    }
+    if (!READONLY || i == null) return;
+    if (!HOSTED || !this.pub) { if (Date.now() - this.warnAt > 8000) { this.warnAt = Date.now(); toast('Нет связи с ведущим — изменение не сохранится', 4000); } return; }
+    this.lfq.set(l.id + '|' + i, { k: 'lf', loc: l.id, i, val: cleanFacts(l.facts)[i] || '' });
+    if (!this.lfqT) this.lfqT = setTimeout(() => { this.lfqT = 0; const list = [...this.lfq.values()]; this.lfq.clear(); for (const o of list) { o.id = uid(); o.n = ++this.opN; o.t0 = Date.now(); this.bmsg({ t: 'op', ...o }); } }, 300);
+  },
+  locsend(id) { const l = S.locations.find(x => x.id === id); if (this.pub && this.pubLoc(l)) this.bmsg({ t: 'lf', loc: l.id, at: this.clock(), facts: cleanFacts(l.facts) }); },
+  locin(p) {
+    const l = S.locations.find(x => x.id === p.loc), i = +p.i; if (!this.pubLoc(l) || !(i >= 0 && i < FACTS_MAX) || typeof p.val !== 'string') return;
+    l.facts = cleanFacts(l.facts); while (l.facts.length <= i) l.facts.push('');
+    l.facts[i] = p.val.replace(/\n/g, ' ').slice(0, 400); l.updatedAt = Date.now(); save(5000); factsSync(l);
+    this.locDirty.set(l.id, Date.now()); this.locsend(l.id);
+  },
+  locrecv(p, quiet) {
+    const l = S.locations.find(x => x.id === p.loc), at = +p.at || 0; if (!l || !Array.isArray(p.facts)) return;
+    if (!quiet) { if (at <= (this.lfat[p.loc] || 0)) return; this.lfat[p.loc] = at; this.lfkeep[p.loc] = p; }
+    const f = cleanFacts(p.facts), a = document.activeElement;
+    if (a && a.dataset && a.dataset.pf != null && a.dataset.loc === l.id) { const i = +a.dataset.pf; while (f.length <= i) f.push(''); f[i] = a.value.slice(0, 400); }   // своё недопечатанное поле не трогаем
+    for (const o of this.lfq.values()) if (o.loc === l.id) { while (f.length <= o.i) f.push(''); f[o.i] = o.val; }
+    l.facts = f; if (!quiet) factsSync(l);
   },
   /* ── Листы персонажей в прямом эфире ── */
   sheet(c, patch) {
@@ -2952,6 +3165,7 @@ const Live = {
   breplay() {
     for (const [id, p] of Object.entries(this.bkeep)) { if ((+p.at || 0) > (SHARED_AT || 0)) this.bapply(p, true, true); else delete this.bkeep[id]; }
     for (const [id, p] of Object.entries(this.shkeep)) { if ((+p.at || 0) > (SHARED_AT || 0)) this.shrecv(p, true); else delete this.shkeep[id]; }
+    for (const [id, p] of Object.entries(this.lfkeep)) { if ((+p.at || 0) > (SHARED_AT || 0)) this.locrecv(p, true); else delete this.lfkeep[id]; }
     this.acked();
     for (const o of this.pend) { const b = o.b && S.boards.find(x => x.id === o.b); if (b) applyOp(b, o); }
     for (const o of [...this.pend, ...this.shq.values()]) { const c = o.ch && S.characters.find(x => x.id === o.ch); if (c && c.sheet) shApply(c, o); }
@@ -3111,6 +3325,11 @@ const ACT = {
   'form-delete': () => deleteFromForm(),
   'toggle-link': el => { const k = el.dataset.k, id = el.dataset.id, a = F.draft[k] = F.draft[k] || []; const i = a.indexOf(id); i < 0 ? a.push(id) : a.splice(i, 1); F.dirty = true; el.classList.toggle('on', i < 0); },
   'pick-img': async el => { const k = el.dataset.k; addImages(k, await pickFiles('image/*', el.dataset.multi)); },
+  'place-open': el => placeOpen(el.dataset.id, el),
+  'place-close': () => placeClose(),
+  'pf-add': el => { const l = S.locations.find(x => x.id === el.dataset.id); if (!l || placeRO()) return; l.facts = cleanFacts(l.facts); if (l.facts.length >= FACTS_MAX) return; l.facts.push(''); const sec = el.closest('.pf-sec') || $('.pf-sec'); factsSync(l, null, true); const ins = sec ? $$('.pf-in', sec) : []; if (ins.length) ins[ins.length - 1].focus(); },
+  'rel-add': () => { (F.draft.relations = Array.isArray(F.draft.relations) ? F.draft.relations : []).push({ to: '', text: '' }); F.dirty = true; refreshField('relations'); const n = $$('#form .rel-row select'); if (n.length) n[n.length - 1].focus(); },
+  'rel-del': el => { (F.draft.relations || []).splice(+el.dataset.i, 1); F.dirty = true; refreshField('relations'); },
   'rm-img': el => { const k = el.dataset.k; if (el.dataset.id) F.draft[k] = F.draft[k].filter(i => i !== el.dataset.id); else F.draft[k] = null; F.dirty = true; refreshField(k); },
   fmt: el => formatText($('#' + el.closest('.rich-bar').dataset.for), el.dataset.v),
   share: () => { closeMenu(); openShare(); },
@@ -3182,7 +3401,8 @@ const SHEETS = {
     { t: 'track', title: 'Стресс', rows: [{ k: 'Физический', boxes: [0, 0, 0] }, { k: 'Ментальный', boxes: [0, 0, 0] }] }, ...shCons()] },
   blank: { name: 'Пустой лист', hint: 'соберу разделы сам', make: () => [] },
 };
-const SW = { by: {}, drag: null, menuFor: null, hide: false, ro: null, timer: null };
+const SW = { by: {}, drag: null, menuFor: null, hide: false, ro: null, timer: null, fp: new Set(), fpNew: null, fpAdd: null };
+try { SW.fp = new Set(JSON.parse(lsGet('cj-fate') || '[]')); } catch (e) { SW.fp = new Set(); }
 try { SW.by = JSON.parse(lsGet('cj-sheets') || '{}') || {}; } catch (e) { SW.by = {}; }
 const wins = () => (SW.by[cid()] = Array.isArray(SW.by[cid()]) ? SW.by[cid()] : []);
 const winsSave = () => { clearTimeout(SW.timer); SW.timer = setTimeout(() => lsSet('cj-sheets', JSON.stringify(SW.by)), 300); };
@@ -3197,12 +3417,48 @@ function railHtml() {
   if (!cast.length && READONLY) return `<div id="b-rail" hidden></div>`;
   return `<div class="b-panel b-rail ${SW.hide ? 'hide' : ''}" id="b-rail">
     <button class="b-btn" data-act="rail-toggle" title="${SW.hide ? 'Показать портреты' : 'Свернуть портреты'}" aria-label="Портреты персонажей">${ic('users')}</button>
-    <div class="rail-list">${cast.map(c => { const src = c.portrait && IMG[c.portrait]; return `<button class="rail-p ${open.has(c.id) ? 'on' : ''}" data-act="sh-open" data-id="${esc(c.id)}" title="${esc(c.name)} — лист персонажа">${src ? `<img src="${esc(src)}" alt="">` : `<span class="ph">${esc(initials(c.name))}</span>`}<span class="nm">${esc(c.name.trim().split(/\s+/)[0])}</span></button>`; }).join('')
+    <div class="rail-list">${cast.map(c => { const src = c.portrait && IMG[c.portrait], fp = SW.fp.has(c.id); return `<div class="rail-row" data-id="${esc(c.id)}"><button class="rail-p ${open.has(c.id) ? 'on' : ''}" data-act="sh-open" data-id="${esc(c.id)}" title="${esc(c.name)} — лист персонажа">${src ? `<img src="${esc(src)}" alt="">` : `<span class="ph">${esc(initials(c.name))}</span>`}<span class="nm">${esc(c.name.trim().split(/\s+/)[0])}</span></button>${c.sheet ? `<button class="fp-mini ${fp ? 'on' : ''}" data-act="fp-toggle" data-id="${esc(c.id)}" title="${fp ? 'Убрать жетоны судьбы' : 'Показать жетоны судьбы'}" aria-label="Жетоны судьбы: ${esc(c.name)}" aria-expanded="${fp}"></button>` : ''}</div>`; }).join('')
       || `<p class="rail-none">Портретов пока нет</p>`}</div>
     ${READONLY ? '' : `<button class="b-btn" data-act="sh-cast-menu" title="Выбрать, чьи портреты здесь стоят" aria-label="Выбрать персонажей">${ic('plus')}</button>`}
   </div>`;
 }
-function railRender() { const r = $('#b-rail'); if (r) r.outerHTML = railHtml(); }
+function railRender() { const r = $('#b-rail'); if (r) r.outerHTML = railHtml(); fateRender(); }
+/* ═════════ Жетоны судьбы: выдвигаются слева от портрета ═════════
+   Число берётся из листа: счётчик в разделе «Жетоны судьбы», строка «Сейчас» (или последняя строка раздела). */
+const FP_BLOCK = /жетон|судьб|fate/i, FP_ROW = /сейчас|текущ|остал|налич|now|current/i, FP_MAX = 12;
+function fateRow(c) {
+  if (!c || !c.sheet || !Array.isArray(c.sheet.blocks)) return null;
+  const bl = c.sheet.blocks; let bi = bl.findIndex(b => b.t === 'counter' && FP_BLOCK.test(b.title || '') && (b.rows || []).length), ri = -1;
+  if (bi >= 0) { ri = bl[bi].rows.findIndex(r => FP_ROW.test(r.k || '')); if (ri < 0) ri = bl[bi].rows.length - 1; }
+  else for (let i = 0; i < bl.length && bi < 0; i++) if (bl[i].t === 'counter') { const j = (bl[i].rows || []).findIndex(r => FP_BLOCK.test(r.k || '')); if (j >= 0) { bi = i; ri = j; } }
+  return bi < 0 || ri < 0 ? null : { bi, ri, b: bl[bi], row: bl[bi].rows[ri] };
+}
+function fateHtml(c, right, top, h) {
+  const f = fateRow(c), ro = sheetRO(), n = f ? clamp(parseInt(f.row.n, 10) || 0, 0, 99) : 0, show = Math.min(n, FP_MAX), id = esc(c.id);
+  const q = show > 5 ? (5 * 1.12 - 1) / (show - 1) : 1.12;      // больше пяти — жетоны ложатся внахлёст, ряд не растёт
+  const toks = Array.from({ length: show }, (_, i) => `<i class="fp-tok" style="--i:${show - 1 - i}"></i>`).join('');
+  const body = !f ? `<span class="fp-note">В листе нет счётчика жетонов</span>${ro ? '' : `<span class="fp-ctl"><button class="fp-btn" data-act="fp-make" data-id="${id}" title="Добавить в лист раздел «Жетоны судьбы»" aria-label="Добавить счётчик жетонов">${ic('plus')}</button></span>`}`
+    : `${n > FP_MAX ? `<b class="fp-more">+${n - FP_MAX}</b>` : ''}${n ? `<span class="fp-toks" style="--q:${q.toFixed(3)}">${toks}</span>` : `<span class="fp-note">Жетонов нет</span>`}${ro ? '' : `<span class="fp-ctl"><button class="fp-btn" data-act="fp-step" data-v="1" data-id="${id}" title="Дать жетон" aria-label="Дать жетон">${ic('plus')}</button><button class="fp-btn" data-act="fp-step" data-v="-1" data-id="${id}" title="Потратить жетон" aria-label="Потратить жетон" ${n ? '' : 'disabled'}>${ic('minus')}</button></span>`}`;
+  return `<div class="fp-tray ${SW.fpNew === c.id ? 'in' : ''} ${SW.fpAdd === c.id ? 'add' : ''}" data-id="${id}" data-n="${n}" style="right:${Math.round(right)}px;top:${Math.round(top)}px;height:${Math.round(h)}px" role="group" aria-label="Жетоны судьбы, ${esc(c.name)}: ${n}" title="Жетоны судьбы: ${n}">${body}</div>`;
+}
+function fateRender() {
+  const box = $('#b-fate'), board = $('#board'), rail = $('#b-rail'); if (!box || !board) return;
+  const list = rail && !rail.hidden && !SW.hide ? $('.rail-list', rail) : null; let html = '';
+  if (list && SW.fp.size) {
+    const R = board.getBoundingClientRect(), L = list.getBoundingClientRect(), right = R.right - rail.getBoundingClientRect().left + 8;
+    for (const row of $$('.rail-row', list)) {
+      const c = SW.fp.has(row.dataset.id) ? shChar(row.dataset.id) : null; if (!c || !c.sheet) continue;
+      const r = row.getBoundingClientRect(); if (r.top < L.top - r.height / 2 || r.bottom > L.bottom + r.height / 2) continue;   // портрет прокручен за край списка
+      html += fateHtml(c, right, r.top - R.top, r.height);
+    }
+  }
+  box.innerHTML = html; SW.fpNew = SW.fpAdd = null;
+}
+/* Лист появился, пропал или изменился: мини-жетон на портрете и ряд жетонов должны это отразить. */
+function fateSync(c) { const row = $$('.rail-row').find(r => r.dataset.id === c.id); if (row && !!c.sheet !== !!$('.fp-mini', row)) railRender(); else if (SW.fp.has(c.id)) fateRender(); }
+const fateWide = () => $$('.fp-tray').reduce((m, e) => Math.max(m, e.offsetWidth + 8), 0);
+document.addEventListener('scroll', e => { if (e.target.classList && e.target.classList.contains('rail-list')) fateRender(); }, true);
+window.addEventListener('resize', () => fateRender());
 function blockHtml(b, bi, edit, ro) {
   const at = `data-b="${bi}"`, rows = b.rows || [];
   const inp = (f, v, ph, cls, ri, extra = '') => `<input class="sh-in ${cls}" data-sf="${f}" ${at}${ri == null ? '' : ` data-r="${ri}"`} value="${esc(v ?? '')}" placeholder="${ph}" aria-label="${ph}" autocomplete="off" spellcheck="false" ${extra}>`;
@@ -3246,7 +3502,7 @@ function winHtml(w, i) {
     <header class="sh-head">${src ? `<img class="sh-av" src="${esc(src)}" alt="">` : `<span class="sh-av">${esc(initials(c.name))}</span>`}<div class="sh-ttl"><b>${esc(c.name)}</b><span>${esc(sub)}</span></div>
       ${!ro && c.sheet ? `<button class="b-btn sm ${edit ? 'on' : ''}" data-act="sh-edit" title="${edit ? 'Закончить настройку' : 'Настроить лист: разделы, названия, строки'}" aria-label="Настроить лист">${ic('edit')}</button>${READONLY ? '' : `<button class="b-btn sm" data-act="sh-menu" title="Ещё" aria-label="Ещё">${ic('dots')}</button>`}` : ''}
       <button class="b-btn sm" data-act="sh-min" title="${w.min ? 'Развернуть' : 'Свернуть в полоску'}" aria-label="${w.min ? 'Развернуть' : 'Свернуть'}">${ic(w.min ? 'down' : 'minus')}</button><button class="b-btn sm" data-act="sh-close" title="Закрыть лист" aria-label="Закрыть лист">${ic('x')}</button>
-    </header><div class="sh-body">${sheetBody(c, edit)}</div></section>`;
+    </header><div class="sh-body">${placeOf(c) ? `<div class="sh-place"><span>Место</span>${placeLink(c)}</div>` : ''}${sheetBody(c, edit)}</div></section>`;
 }
 const shGrow = t => { t.style.height = 'auto'; t.style.height = t.scrollHeight + 2 + 'px'; };
 function winsRender() {
@@ -3292,7 +3548,7 @@ function shCtx(el) {
   const b = c.sheet && el.dataset.b != null ? c.sheet.blocks[+el.dataset.b] : null, ri = el.dataset.r != null ? +el.dataset.r : -1;
   return { c, w: wins().find(x => x.id === c.id), b, bi: +el.dataset.b, ri, row: b && b.rows && ri >= 0 ? b.rows[ri] : null };
 }
-function shTouch(c, redraw, focus, patch) { c.updatedAt = Date.now(); save(5000); if (redraw) winRefresh(c.id, focus); Live.sheet(c, patch); }
+function shTouch(c, redraw, focus, patch) { c.updatedAt = Date.now(); save(5000); if (redraw) winRefresh(c.id, focus); Live.sheet(c, patch); fateSync(c); }
 /* Строение листа: какие разделы и сколько в них строк и клеток. Если оно не менялось, чужие правки подставляются в открытый лист на месте. */
 const shSig = c => c.sheet ? c.sheet.blocks.map(b => b.t + ':' + (b.rows || []).map(r => (r.boxes ? r.boxes.length : '')).join(',')).join('|') : '';
 const pubSheet = c => !!c && !c.secret && !!c.sheet && !c.sheet.secret;
@@ -3335,6 +3591,7 @@ function shSet(c, o) {
 function shApply(c, o) { if (o.k === 'shf') return shSet(c, o); if (o.k === 'sheet') { const bl = cleanBlocks(o.blocks); if (bl && c.sheet) { c.sheet.blocks = bl; return true; } } return false; }
 /* Показать изменившийся лист в открытом окне. Если в нём сейчас печатают — меняем остальные поля на месте, курсор не трогаем. */
 function shShow(c) {
+  fateSync(c);
   const el = $$('.sh-win').find(x => x.dataset.id === c.id); if (!el) return;
   const act = document.activeElement, inside = !!act && el.contains(act) && !!act.dataset.sf;
   if (!inside) return winRefresh(c.id);
@@ -3374,12 +3631,24 @@ document.addEventListener('input', e => {
 });
 Object.assign(ACT, {
   'rail-toggle': () => { SW.hide = !SW.hide; railRender(); },
+  'fp-toggle': el => { const id = el.dataset.id; if (SW.fp.has(id)) SW.fp.delete(id); else { SW.fp.add(id); SW.fpNew = id; } lsSet('cj-fate', JSON.stringify([...SW.fp].slice(-60))); railRender(); },
+  'fp-step': el => {
+    const c = shChar(el.dataset.id), f = fateRow(c); if (!f || sheetRO()) return;
+    const n = clamp((parseInt(f.row.n, 10) || 0) + +el.dataset.v, 0, 99); if (n === (+f.row.n || 0)) return;
+    f.row.n = n; if (+el.dataset.v > 0) SW.fpAdd = c.id;
+    const inp = $(`.sh-win[data-id="${c.id}"] .sh-n[data-b="${f.bi}"][data-r="${f.ri}"]`); if (inp) inp.value = n;
+    shTouch(c, false, null, { bi: f.bi, bt: f.b.t, ri: f.ri, f: 'n', val: n });
+  },
+  'fp-make': el => {
+    const c = shChar(el.dataset.id); if (!c || !c.sheet || fateRow(c) || sheetRO()) return;
+    c.sheet.blocks.push({ t: 'counter', title: 'Жетоны судьбы', rows: [{ k: 'Обновление', n: 3 }, { k: 'Сейчас', n: 3 }] }); SW.fpNew = c.id; shTouch(c, true);
+  },
   'sh-open': el => {
     const id = el.dataset.id, list = wins(), R = boardRect(); let w = list.find(x => x.id === id);
     if (w && !w.min && list[list.length - 1] === w) list.pop();                       // лист уже сверху — повторное нажатие закрывает
     else if (w) { w.min = false; list.splice(list.indexOf(w), 1); list.push(w); }
     else {
-      const n = list.length % 6, rail = $('#b-rail'), gap = rail && !rail.hidden ? rail.offsetWidth + 24 : 12, width = Math.min(360, R.width - 16);
+      const n = list.length % 6, rail = $('#b-rail'), gap = rail && !rail.hidden ? rail.offsetWidth + 24 + fateWide() : 12, width = Math.min(360, R.width - 16);
       let x = null;                                   // новые листы встают в ряд справа налево, пока есть место; дальше — лесенкой
       for (let col = 0; col < 6 && x === null; col++) { const cx = R.width - gap - width * (col + 1) - 10 * col; if (cx < 84) break; if (!list.some(o => Math.abs(o.x - cx) < width - 40 && o.y < 80)) x = cx; }
       list.push(x === null ? { id, w: width, h: Math.min(620, R.height - 28), x: Math.max(8, R.width - gap - width - 30 - n * 30), y: 48 + n * 40 } : { id, w: width, h: Math.min(620, R.height - 28), x, y: 12 });
@@ -3422,7 +3691,7 @@ Object.assign(ACT, {
   },
 });
 
-const EDIT_ACTS = new Set(['new', 'edit', 'edit-campaign', 'new-campaign', 'del-campaign', 'create-menu', 'export', 'import', 'share', 'share-go', 'publish', 'publish-go', 'copy-link', 'owner-logout', 'sync-retry', 'bg', 'bg-set', 'bg-dim', 'bg-upload', 'b-tool', 'b-color', 'b-size', 'b-add-menu', 'b-upload', 'b-journal', 'b-pick', 'b-undo', 'b-clear', 'b-new', 'b-settings', 'b-save', 'b-del', 'b-lock', 'b-order', 'b-remove', 'sh-edit', 'sh-menu', 'sh-secret', 'sh-tpl', 'sh-add-row', 'sh-del-row', 'sh-add-block', 'sh-del-block', 'sh-move-block', 'sh-numbered', 'sh-box', 'sh-box-n', 'sh-step', 'sh-cast-menu', 'sh-cast-toggle']);
+const EDIT_ACTS = new Set(['new', 'edit', 'edit-campaign', 'new-campaign', 'del-campaign', 'create-menu', 'export', 'import', 'share', 'share-go', 'publish', 'publish-go', 'copy-link', 'owner-logout', 'sync-retry', 'bg', 'bg-set', 'bg-dim', 'bg-upload', 'b-tool', 'b-color', 'b-size', 'b-add-menu', 'b-upload', 'b-journal', 'b-pick', 'b-undo', 'b-clear', 'b-new', 'b-settings', 'b-save', 'b-del', 'b-lock', 'b-order', 'b-remove', 'sh-edit', 'sh-menu', 'sh-secret', 'sh-tpl', 'sh-add-row', 'sh-del-row', 'sh-add-block', 'sh-del-block', 'sh-move-block', 'sh-numbered', 'sh-box', 'sh-box-n', 'sh-step', 'sh-cast-menu', 'sh-cast-toggle', 'fp-step', 'fp-make', 'rel-add', 'rel-del', 'pf-add']);
 
 document.addEventListener('click', e => {
   if (menuEl && !e.target.closest('.menu') && !e.target.closest('[data-act$="-menu"]')) closeMenu();
@@ -3437,6 +3706,7 @@ document.addEventListener('input', e => {
   const t = e.target;
   if (t.id === 'search-in') return renderSearch();
   if (F && t.dataset.k && t.closest('#form')) { F.draft[t.dataset.k] = t.type === 'checkbox' ? t.checked : t.value; F.dirty = true; }
+  if (F && t.dataset.rf && t.closest('#form')) { const r = (F.draft.relations || [])[+t.dataset.rel]; if (r) { r[t.dataset.rf] = t.value; F.dirty = true; } }
 });
 document.addEventListener('focusin', e => { if (e.target.id === 'search-in') renderSearch(); });
 document.addEventListener('input', e => { if (e.target.id === 'dice-name') Live.setName(e.target.value); });
@@ -3447,6 +3717,7 @@ document.addEventListener('keydown', e => {
     const cf = $('[data-confirm]'); if (cf) return cf._cancel();
     if (LB) return closeLightbox();
     if (menuEl) return closeMenu();
+    if (PW.id && !F && !$('#dlg') && !$('#share')) return placeClose();
     if ($('#share')) return closeShare();
     if ($('#dlg')) return closeDlg();
     if (F) return closeForm();
