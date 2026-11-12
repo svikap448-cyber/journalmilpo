@@ -666,6 +666,7 @@ button.b-name:hover { background: var(--surface-2); }
 .dice-row { display: flex; align-items: center; gap: 5px; }
 .dice-row b { min-width: 30px; text-align: center; font-size: 15px; font-variant-numeric: tabular-nums; }
 .dice-row .btn { margin-left: 8px; }
+.dice-snd.off { opacity: .55; }
 .dice-lab { font-size: 12.5px; font-weight: 600; color: var(--muted); margin-right: 3px; cursor: help; }
 #dice-log { display: flex; flex-direction: column; gap: 5px; }
 #dice-log:empty { display: none; }
@@ -685,7 +686,7 @@ button.b-name:hover { background: var(--surface-2); }
 .face.plus::before, .face.plus::after, .face.minus::before { box-shadow: inset 0 1px 1px rgba(0,0,0,.45), 0 1px 0 rgba(255,255,255,.35); }
 .dice-stage { position: absolute; inset: 0; z-index: 40; pointer-events: none; overflow: hidden; perspective: 1100px; perspective-origin: 50% 30%; transition: opacity .7s; }
 .dice-stage.fade { opacity: 0; }
-.dice-floor { position: absolute; inset: 0; transform-style: preserve-3d; transform-origin: 50% 60%; transform: rotateX(34deg); }
+.dice-floor { position: absolute; left: 0; top: 0; width: 0; height: 0; transform-style: preserve-3d; transform-origin: 0 0; }
 .die, .die-shadow { position: absolute; left: 0; top: 0; width: var(--s); height: var(--s); margin: calc(var(--s) / -2) 0 0 calc(var(--s) / -2); will-change: transform; }
 .die { transform-style: preserve-3d; }
 .die-shadow { border-radius: 24%; background: rgba(0,0,0,.72); filter: blur(calc(var(--s) / 7)); }
@@ -969,6 +970,8 @@ const ICON = {
   upload: '<path d="M12 16V5"/><path d="m7 9 5-5 5 5"/><path d="M5 20h14"/>',
   star: '<path d="M12 3l2.7 5.6 6.1.8-4.5 4.3 1.1 6.1L12 16.9 6.6 19.8l1.1-6.1L3.2 9.4l6.1-.8z"/>',
   swap: '<path d="M7 4 3 8l4 4"/><path d="M3 8h14"/><path d="m17 12 4 4-4 4"/><path d="M21 16H7"/>',
+  sound: '<path d="M4 9.5h3.5L12 6v12l-4.5-3.5H4z"/><path d="M15.5 9.2a4 4 0 0 1 0 5.6M18.2 6.8a7.4 7.4 0 0 1 0 10.4"/>',
+  mute: '<path d="M4 9.5h3.5L12 6v12l-4.5-3.5H4z"/><path d="m16 9.5 5 5m0-5-5 5"/>',
   lock: '<rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/>',
   share: '<circle cx="18" cy="5" r="2.5"/><circle cx="6" cy="12" r="2.5"/><circle cx="18" cy="19" r="2.5"/><path d="m8.2 10.8 7.6-4.5M8.2 13.2l7.6 4.5"/>',
   globe: '<circle cx="12" cy="12" r="9"/><path d="M3 12h18"/><path d="M12 3c2.8 3 2.8 15 0 18M12 3c-2.8 3-2.8 15 0 18"/>',
@@ -2432,7 +2435,7 @@ function viewBoard() {
       <div class="dice-row">
         <span class="dice-lab" title="Значение навыка прибавляется к броску">Навык</span>
         <button class="b-btn sm" data-act="dice-mod" data-v="-1" aria-label="Уменьшить навык">${ic('minus')}</button><b id="dice-mod">${signed(BV.mod) || '0'}</b><button class="b-btn sm" data-act="dice-mod" data-v="1" aria-label="Увеличить навык">${ic('plus')}</button>
-        <button class="btn primary" data-act="dice-roll">${ic('dice')}Бросить 4dF</button>
+        <button class="btn primary" data-act="dice-roll">${ic('dice')}Бросить 4dF</button>${sndBtn()}
       </div>
       ${ONLINE ? `<div class="dice-net"><input class="dice-name" id="dice-name" maxlength="24" placeholder="Ваше имя" value="${esc(Live.name())}" title="Под этим именем ваши броски увидят остальные" aria-label="Ваше имя">${OWNER ? `<button class="b-btn sm ${BV.secret ? 'on' : ''}" data-act="dice-secret" title="Тайный бросок: результат увидите только вы" aria-label="Тайный бросок">${ic('lock')}</button>` : ''}<span class="dice-net-st" id="dice-net"></span></div>` : ''}
       <div id="dice-log"></div>
@@ -2462,7 +2465,7 @@ function applyCam() {
   const c = BV.cam, t = `translate(${r1(c.x)} ${r1(c.y)}) scale(${c.k})`;
   $('#bworld').setAttribute('transform', t); $('#bdots').setAttribute('patternTransform', t);
   $('#bgrid').style.opacity = c.k < 0.3 ? 0 : 1; $('#bzoom').textContent = Math.round(c.k * 100) + '%';
-  boardSelUi();
+  boardSelUi(); diceCam();
 }
 function zoomAt(px, py, f) { const c = BV.cam, k = clamp(c.k * f, 0.05, 8); c.x = px - (px - c.x) * (k / c.k); c.y = py - (py - c.y) * (k / c.k); c.k = k; applyCam(); }
 function boardBounds(b) {
@@ -2774,32 +2777,193 @@ function rollDice(label) {
   if (ONLINE) { roll.who = Live.name(); roll.secret = OWNER && BV.secret; if (!roll.secret) Live.send(roll); }
   playRoll(roll);
 }
+/* Бросок как у настоящих костей: считается заранее, целиком. Длины — в размерах кубика, время — в секундах.
+   box — края стола {x0, x1, y0, y1}; возвращает кадры (положение и поворот каждого кубика) и удары для звука. */
+const DSIM = { G: 62, E: 0.36, MU: 0.42, R: 0.71, FPS: 120, SUB: 2, MAX: 3.3 };
+function diceSim(n, box, rnd) {
+  const { G, E, MU, R, FPS, SUB, MAX } = DSIM, I = 1 / 6, dt = 1 / (FPS * SUB), TAU = Math.PI * 2;
+  const cross = (a, b) => [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]];
+  const W = box.x1 - box.x0, H = box.y1 - box.y0, side = rnd(0, 1) < 0.5 ? -1 : 1;
+  const gap = Math.min(1.7, (W - 2) / n), aimX = box.x0 + W / 2 - side * W * 0.1, aimY = box.y0 + H * 0.5;
+  const dice = [], events = [], frames = [];
+  for (let i = 0; i < n; i++) {
+    const z0 = rnd(1.6, 2.6), p = [box.x0 + W / 2 + side * (W * rnd(0.3, 0.48)) + (i - (n - 1) / 2) * 0.9, Math.max(box.y1 + 1.2, box.yb + 0.95 + z0 * 0.56) + rnd(0, 1.2) + (i % 2) * 1.2, z0];   // старт — за нижним краем экрана
+    const tx = aimX + (i - (n - 1) / 2) * gap + rnd(-0.4, 0.4), ty = aimY + rnd(-0.8, 0.8);
+    // сила броска подобрана так, чтобы кубик докатился примерно до своей точки: путь ≈ 0.012·v² + 0.27·v
+    const dist = Math.hypot(tx - p[0], ty - p[1]), sp = Math.min(32, (Math.sqrt(0.0729 + 0.048 * dist) - 0.27) / 0.024 * rnd(0.92, 1.08)), v = [(tx - p[0]) / dist * sp, (ty - p[1]) / dist * sp, rnd(1.5, 4.5)], tum = rnd(9, 17);
+    const w = [v[1] / sp * tum + rnd(-4, 4), -v[0] / sp * tum + rnd(-4, 4), rnd(-7, 7)];
+    dice.push({ p, v, w, R: mmul(mrot(0, 0, 1, rnd(0, TAU)), mmul(mrot(1, 0, 0, rnd(0, TAU)), mrot(0, 1, 0, rnd(0, TAU)))), t0: i * 0.06 + rnd(0, 0.04), ins: false, sleep: false, calm: 0, snd: -1, ease: null });
+  }
+  const C = []; for (let i = 0; i < 8; i++) C.push([i & 1 ? 0.5 : -0.5, i & 2 ? 0.5 : -0.5, i & 4 ? 0.5 : -0.5]);
+  const hit = (d, t, s, k) => { if (s < 0.9 || t - d.snd < 0.028) return; d.snd = t; events.push({ t, s, k }); };
+  const flat = d => {                       // довернуть до ближайшей грани: кубик ложится ровно
+    const m = d.R; let b = 0; for (let c = 1; c < 3; c++) if (Math.abs(m[6 + c]) > Math.abs(m[6 + b])) b = c;
+    const sg = m[6 + b] < 0 ? -1 : 1, a = [m[b] * sg, m[3 + b] * sg, m[6 + b] * sg], ax = [a[1], -a[0], 0], l = Math.hypot(ax[0], ax[1]);
+    return l < 1e-6 ? null : { ax: [ax[0] / l, ax[1] / l, 0], ang: Math.atan2(l, a[2]) };
+  };
+  const rest = (d, t, dur) => { const f = flat(d); d.sleep = true; d.v = [0, 0, 0]; d.w = [0, 0, 0]; d.ease = { t, dur, from: d.R, z: d.p[2], f }; };
+  let t = 0, step = 0, end = 0;
+  for (;;) {
+    for (const d of dice) {
+      if (t < d.t0) continue;
+      if (d.sleep) {
+        if (d.ease) { const k = Math.min(1, (t - d.ease.t) / d.ease.dur), s = k * k * (3 - 2 * k), e = d.ease; d.R = e.f ? mmul(mrot(e.f.ax[0], e.f.ax[1], 0, e.f.ang * s), e.from) : e.from; d.p[2] = e.z + (0.5 - e.z) * s; if (k >= 1) d.ease = null; }
+        continue;
+      }
+      const p = d.p, v = d.v, w = d.w;
+      v[2] -= G * dt; p[0] += v[0] * dt; p[1] += v[1] * dt; p[2] += v[2] * dt;
+      const wl = Math.hypot(w[0], w[1], w[2]); if (wl > 1e-6) d.R = mmul(mrot(w[0] / wl, w[1] / wl, w[2] / wl, wl * dt), d.R);
+      if (wl > 34) { const f = 34 / wl; w[0] *= f; w[1] *= f; w[2] *= f; }
+      let pen = 0, bang = 0; const m = d.R;
+      for (const c of C) {
+        const r = [m[0] * c[0] + m[1] * c[1] + m[2] * c[2], m[3] * c[0] + m[4] * c[1] + m[5] * c[2], m[6] * c[0] + m[7] * c[1] + m[8] * c[2]], z = p[2] + r[2];
+        if (z >= 0) continue; if (-z > pen) pen = -z;
+        const uz = v[2] + w[0] * r[1] - w[1] * r[0]; if (uz >= 0) continue;
+        const jn = -(1 + (uz < -1.4 ? E : 0)) * uz / (1 + (r[0] * r[0] + r[1] * r[1]) / I); if (-uz > bang) bang = -uz;
+        v[2] += jn; w[0] += r[1] * jn / I; w[1] -= r[0] * jn / I;
+        const ux = v[0] + w[1] * r[2] - w[2] * r[1], uy = v[1] + w[2] * r[0] - w[0] * r[2], us = Math.hypot(ux, uy); if (us < 1e-5) continue;
+        const tx = ux / us, ty = uy / us, rt = cross(r, [tx, ty, 0]), jt = Math.min(MU * jn, us / (1 + (rt[0] * rt[0] + rt[1] * rt[1] + rt[2] * rt[2]) / I));
+        v[0] -= tx * jt; v[1] -= ty * jt; w[0] -= rt[0] * jt / I; w[1] -= rt[1] * jt / I; w[2] -= rt[2] * jt / I;
+      }
+      if (pen > 0) {
+        p[2] += pen; hit(d, t, bang, 't');
+        const late = t - d.t0 > 1.5 ? 6 : 1.1, f = 1 - late * dt; v[0] *= f; v[1] *= f; w[0] *= f; w[1] *= f; w[2] *= 1 - (late + 1.5) * dt;
+        const up = Math.max(Math.abs(m[6]), Math.abs(m[7]), Math.abs(m[8]));
+        if (Math.hypot(v[0], v[1], v[2]) < 0.7 && Math.hypot(w[0], w[1], w[2]) < 2.4 && up > 0.994) { d.calm += dt; if (d.calm > 0.05) rest(d, t, 0.12); } else d.calm = 0;
+      }
+      // края стола: кубик влетает снаружи, а обратно уже не выкатывается
+      const mx = 0.6, inx = p[0] > box.x0 + mx && p[0] < box.x1 - mx, iny = p[1] > box.y0 + mx && p[1] < box.y1 - mx;
+      if (!d.ins) { if (inx && iny) d.ins = true; }
+      else {
+        if (p[0] < box.x0 + mx) { p[0] = box.x0 + mx; if (v[0] < 0) { hit(d, t, -v[0] * 0.6, 'w'); v[0] *= -0.42; w[2] += v[1] * 0.5; } }
+        if (p[0] > box.x1 - mx) { p[0] = box.x1 - mx; if (v[0] > 0) { hit(d, t, v[0] * 0.6, 'w'); v[0] *= -0.42; w[2] -= v[1] * 0.5; } }
+        if (p[1] < box.y0 + mx) { p[1] = box.y0 + mx; if (v[1] < 0) { hit(d, t, -v[1] * 0.6, 'w'); v[1] *= -0.42; w[2] -= v[0] * 0.5; } }
+        if (p[1] > box.y1 - mx) { p[1] = box.y1 - mx; if (v[1] > 0) { hit(d, t, v[1] * 0.6, 'w'); v[1] *= -0.42; w[2] += v[0] * 0.5; } }
+      }
+    }
+    // кубик о кубик
+    for (let i = 0; i < n; i++) for (let j = i + 1; j < n; j++) {
+      const a = dice[i], b = dice[j]; if (t < a.t0 || t < b.t0 || (a.sleep && b.sleep)) continue;
+      let dx = b.p[0] - a.p[0], dy = b.p[1] - a.p[1], dz = b.p[2] - a.p[2], dd = Math.hypot(dx, dy, dz); if (dd >= 2 * R) continue;
+      if (dd < 1e-4) { dx = 1; dy = 0; dz = 0; dd = 1; }
+      const nx = dx / dd, ny = dy / dd, nz = dz / dd, vr = (b.v[0] - a.v[0]) * nx + (b.v[1] - a.v[1]) * ny + (b.v[2] - a.v[2]) * nz, push = (2 * R - dd) / 2;
+      a.p[0] -= nx * push; a.p[1] -= ny * push; b.p[0] += nx * push; b.p[1] += ny * push; if (!a.sleep) a.p[2] = Math.max(a.p[2] - nz * push, 0.5); if (!b.sleep) b.p[2] = Math.max(b.p[2] + nz * push, 0.5);
+      if (vr >= 0) continue;
+      const jn = -(1 + 0.45) * vr / 2, tvx = b.v[0] - a.v[0] - vr * nx, tvy = b.v[1] - a.v[1] - vr * ny, tvz = b.v[2] - a.v[2] - vr * nz;
+      for (const [d, s] of [[a, -1], [b, 1]]) {
+        if (d.sleep) { if (jn < 0.5) continue; d.sleep = false; d.ease = null; d.calm = 0; }
+        d.v[0] += s * nx * jn; d.v[1] += s * ny * jn; d.v[2] += s * nz * jn;
+        const k = 0.3 * s; d.w[0] += (ny * tvz - nz * tvy) * k; d.w[1] += (nz * tvx - nx * tvz) * k; d.w[2] += (nx * tvy - ny * tvx) * k;
+      }
+      hit(a, t, -vr, 'd');
+    }
+    if (step % SUB === 0) frames.push(dice.map(d => [d.p[0], d.p[1], d.p[2], d.R]));
+    step++; t = step * dt;
+    if (dice.every(d => d.sleep && !d.ease)) { if (!end) end = t; if (t - end > 0.02) break; } else end = 0;
+    if (t > MAX) { let more = false; for (const d of dice) if (!d.sleep) { rest(d, t, 0.16); more = true; } if (!more && dice.every(d => !d.ease)) break; }
+  }
+  frames.push(dice.map(d => [d.p[0], d.p[1], 0.5, d.R]));
+  return { frames, events, dur: frames.length / FPS, forced: t > MAX };
+}
+/* Несколько попыток: все кубики должны лечь на стол, не друг на друга, и успокоиться сами. */
+function diceThrow(n, box) {
+  const rnd = (a, b) => a + Math.random() * (b - a); let first = null;
+  for (let k = 0; k < 12; k++) {
+    const r = diceSim(n, box, rnd), last = r.frames[r.frames.length - 1];
+    if (!r.forced && last.every((d, i) => d[0] > box.x0 + 0.5 && d[0] < box.x1 - 0.5 && d[1] > box.y0 + 0.5 && d[1] < box.y1 - 0.5 && last.every((e, j) => j <= i || Math.hypot(d[0] - e[0], d[1] - e[1]) > 1.3))) return r;
+    first = first || r;
+  }
+  return first;
+}
+/* 24 поворота куба: ими подбирается, какой гранью кубик ляжет вверх, чтобы выпало уже известное значение. */
+const CUBE_ROTS = (() => {
+  const out = [], seen = new Set(), q = [[1, 0, 0, 0, 1, 0, 0, 0, 1]], gen = [mrot(1, 0, 0, Math.PI / 2), mrot(0, 1, 0, Math.PI / 2)];
+  while (q.length) { const m = q.pop().map(v => Math.round(v)), key = m.join(); if (seen.has(key)) continue; seen.add(key); out.push(m); for (const g of gen) q.push(mmul(g, m)); }
+  return out;
+})();
+const DICE_TILT = 34 * Math.PI / 180, DICE_VIEW = mrot(1, 0, 0, DICE_TILT);
+/* Кубики лежат на самой доске: двигаются и меняют размер вместе с ней. */
+function diceCam() { const f = $('.dice-floor'), c = BV.cam; if (f && c) f.style.transform = `translate3d(${r1(c.x)}px,${r1(c.y)}px,0) scale3d(${c.k},${c.k},${c.k})`; }
+
+/* ── звук костей: только у кубиков, остальной сайт беззвучный ── */
+function diceClack(ctx, out, noise, at, s, kind) {
+  const vol = Math.min(1, Math.pow(s / 16, 1.2)) * (kind === 'w' ? 0.5 : 1); if (vol < 0.02) return;
+  const r = (a, b) => a + Math.random() * (b - a), die = kind === 'd';
+  const env = (peak, dur) => { const g = ctx.createGain(); g.gain.setValueAtTime(0.0001, at); g.gain.exponentialRampToValueAtTime(peak, at + 0.0015); g.gain.exponentialRampToValueAtTime(0.0001, at + dur); g.connect(out); return g; };
+  const burst = (type, f, q, peak, dur) => { const src = ctx.createBufferSource(), fl = ctx.createBiquadFilter(); src.buffer = noise; fl.type = type; fl.frequency.value = f; fl.Q.value = q; src.connect(fl); fl.connect(env(peak, dur)); src.start(at, r(0, 0.18), dur + 0.02); };
+  const ping = (f, peak, dur) => { const o = ctx.createOscillator(); o.type = 'sine'; o.frequency.setValueAtTime(f, at); o.connect(env(peak, dur)); o.start(at); o.stop(at + dur + 0.02); };
+  burst('bandpass', die ? r(3800, 5200) : r(2300, 3400), die ? 2.2 : 1.4, vol * (die ? 0.9 : 0.8), die ? r(0.02, 0.03) : r(0.03, 0.045));       // сухой щелчок кости
+  const f = die ? r(2700, 3500) : r(1250, 1900); ping(f, vol * 0.28, die ? 0.016 : 0.024); ping(f * r(1.45, 1.6), vol * 0.16, 0.014);
+  if (!die) burst('lowpass', r(260, 420), 0.8, vol * 0.75, r(0.05, 0.085));                                                                // стол отзывается глухо
+}
+const Snd = {
+  ctx: null, out: null, noise: null, bus: null, muted: false,
+  init() {
+    try { this.muted = localStorage.getItem('cj-dice-mute') === '1'; } catch (e) { /* в песочнице памяти браузера нет */ }
+    const arm = () => { if ($('#dice-stage')) this.arm(); };      // браузер разрешает звук только после первого нажатия на странице
+    for (const ev of ['pointerdown', 'keydown']) document.addEventListener(ev, arm, { capture: true, passive: true });
+  },
+  arm() {
+    if (this.muted) return null;
+    try {
+      if (!this.ctx) {
+        const AC = window.AudioContext || window.webkitAudioContext; if (!AC) return null;
+        const ctx = new AC(), n = Math.floor(ctx.sampleRate * 0.3), buf = ctx.createBuffer(1, n, ctx.sampleRate), d = buf.getChannelData(0);
+        for (let i = 0; i < n; i++) d[i] = Math.random() * 2 - 1;
+        const g = ctx.createGain(), cmp = ctx.createDynamicsCompressor(); g.gain.value = 0.7; g.connect(cmp); cmp.connect(ctx.destination);
+        this.ctx = ctx; this.noise = buf; this.out = g;
+      }
+      if (this.ctx.state !== 'running') this.ctx.resume().catch(() => {});
+    } catch (e) { return null; }
+    return this.ctx;
+  },
+  stop() { const b = this.bus; this.bus = null; if (b && this.ctx) try { b.gain.setTargetAtTime(0, this.ctx.currentTime, 0.02); } catch (e) { /* уже отключён */ } },
+  roll(events, t0) {
+    this.stop(); const ctx = this.arm(); if (!ctx) return;
+    const bus = ctx.createGain(); bus.connect(this.out); this.bus = bus;
+    const go = () => {
+      if (this.bus !== bus || this.muted) return;
+      const base = ctx.currentTime + (t0 - performance.now()) / 1000;
+      for (const e of events) { const at = base + e.t; if (at > ctx.currentTime - 0.03) diceClack(ctx, bus, this.noise, Math.max(at, ctx.currentTime), e.s, e.k); }
+    };
+    if (ctx.state === 'running') go(); else ctx.resume().then(go, () => {});
+  },
+  toggle() {
+    this.muted = !this.muted; try { localStorage.setItem('cj-dice-mute', this.muted ? '1' : '0'); } catch (e) { /* не запомнится, но сработает */ }
+    if (this.muted) this.stop(); else this.roll([{ t: 0.03, s: 12, k: 't' }, { t: 0.13, s: 7, k: 'd' }, { t: 0.2, s: 4, k: 't' }], performance.now());
+  },
+};
+Snd.init();
+const sndBtn = () => `<button class="b-btn sm dice-snd ${Snd.muted ? 'off' : ''}" data-act="dice-sound" aria-pressed="${!Snd.muted}" title="${Snd.muted ? 'Звук кубиков выключен. Нажмите, чтобы включить' : 'Звук кубиков включён. Нажмите, чтобы выключить'}" aria-label="Звук кубиков">${ic(Snd.muted ? 'mute' : 'sound')}</button>`;
+
 function playRoll(roll) {
   const stage = $('#dice-stage'); if (!stage) return;
-  const vals = roll.vals, token = ++BV.roll;
-  const R = boardRect(), size = Math.round(clamp(R.width / 15, 44, 70)), half = size / 2, TAU = Math.PI * 2, rnd = (a, b) => a + Math.random() * (b - a);
+  const vals = roll.vals, token = ++BV.roll, cam = BV.cam || { x: 0, y: 0, k: 1 }, R = boardRect();
+  // размер кубика привязан к доске: при 100% как раньше; если доска сильно уменьшена или увеличена — в разумных пределах на экране
+  const size = r1(clamp(clamp(R.width / 15, 44, 70) * cam.k, 26, 120) / cam.k), SIN = Math.sin(DICE_TILT), COS = Math.cos(DICE_TILT);
   stage.className = 'dice-stage'; stage.style.setProperty('--s', size + 'px');
   stage.innerHTML = `<div class="dice-floor">${vals.map(v => `<div class="die-shadow"></div><div class="die" data-v="${v}"><div class="cube">${DIE_FACES.map(f => `<div class="face f-${f[0]} ${SYM[f[1]]}"></div>`).join('')}</div></div>`).join('')}</div><div class="dice-banner" id="dice-banner"></div>`;
-  const cx = R.width / 2, cy = R.height * 0.6, side = Math.random() < 0.5 ? -1 : 1;
+  diceCam();
+  // стол — та часть доски, что сейчас видна (под табличкой с итогом кубики не ложатся)
+  const u = size * cam.k, wx = v => (R.width * v - cam.x) / u, wy = v => (R.height * v - cam.y) / u, box = { x0: wx(0.08), x1: wx(0.9), y0: wy(0.3), y1: wy(0.9), yb: wy(1) };
+  const fit = (a, b, lo, hi) => { const m = (box[a] + box[b]) / 2, h = clamp(box[b] - box[a], lo, hi) / 2; box[a] = m - h; box[b] = m + h; };
+  fit('x0', 'x1', 6, 18); fit('y0', 'y1', 4.5, 9);       // стол не больше 18 × 9 кубиков: на уменьшенной доске кости не разлетаются по всему экрану
+  const sim = diceThrow(vals.length, box), nf = sim.frames.length, last = sim.frames[nf - 1];
   const dice = $$('.die', stage).map((el, i) => {
-    const v = vals[i], jit = rnd(-0.25, 0.25), q = Math.floor(Math.random() * 4);
-    const T = v === 1 ? mrot(0, 0, 1, q * Math.PI / 2 + jit) : v === -1 ? mmul(mrot(0, 0, 1, (q % 2) * Math.PI + jit), mrot(0, 1, 0, -Math.PI / 2)) : mmul(mrot(0, 0, 1, rnd(0, TAU)), mrot(1, 0, 0, -Math.PI / 2));
-    const ex = cx + (i - 1.5) * size * 1.75 + rnd(-8, 8), ey = cy + rnd(-size * 0.4, size * 0.4);
-    const sx = ex + side * rnd(R.width * 0.25, R.width * 0.5), sy = R.height + size * 3 + rnd(0, 120);
-    const dx = ex - sx, dy = ey - sy, len = Math.hypot(dx, dy);
-    return { el, cube: el.firstChild, faces: [...el.firstChild.children], shadow: el.previousSibling, T, sx, sy, ex, ey, ax: -dy / len, ay: dx / len,
-      roll: Math.PI / 2 * Math.round(len / size * 0.55 + rnd(2, 4)), spin: rnd(-2.5, 2.5), delay: i * 70 + rnd(0, 60), dur: rnd(1150, 1500), hops: 3 + (i % 2) };
+    const fits = CUBE_ROTS.filter(P => DIE_FACES.some(f => f[1] === vals[i] && f[2](mmul(last[i][3], P))[2] > 0.9));
+    return { el, cube: el.firstChild, faces: [...el.firstChild.children], shadow: el.previousSibling, P: fits[Math.floor(Math.random() * fits.length)] || CUBE_ROTS[0] };
   });
   const L = [-0.4, -0.28, 0.87], still = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
-  const place = (d, s) => {
-    const rem = d.roll * (1 - s), M = mmul(mrot(d.ax, d.ay, 0, -rem), mmul(mrot(0, 0, 1, -d.spin * (1 - s)), d.T));
-    const x = d.sx + (d.ex - d.sx) * s, y = d.sy + (d.ey - d.sy) * s;
-    const hop = size * 1.5 * Math.abs(Math.sin(s * Math.PI * d.hops)) * Math.pow(1 - s, 1.4), z = half * (1 + 0.414 * Math.abs(Math.sin(2 * rem))) + hop;
-    d.el.style.transform = `translate3d(${x.toFixed(1)}px,${y.toFixed(1)}px,${z.toFixed(1)}px)`;
-    d.cube.style.transform = `matrix3d(${M[0]},${M[3]},${M[6]},0,${M[1]},${M[4]},${M[7]},0,${M[2]},${M[5]},${M[8]},0,0,0,0,1)`;
-    DIE_FACES.forEach((f, i) => { const n = f[2](M); d.faces[i].style.filter = `brightness(${(0.56 + 0.47 * Math.max(0, n[0] * L[0] + n[1] * L[1] + n[2] * L[2])).toFixed(3)})`; });
-    d.shadow.style.transform = `translate3d(${(x + size * 0.24 + hop * 0.45).toFixed(1)}px,${(y + size * 0.2 + hop * 0.32).toFixed(1)}px,0) scale(${(1.18 + hop / size * 0.5).toFixed(2)})`;
-    d.shadow.style.opacity = (0.8 / (1 + hop / size)).toFixed(2);
+  const draw = fi => {
+    const fr = sim.frames[fi];
+    dice.forEach((d, i) => {
+      const [x, y, z, rot] = fr[i], M = mmul(rot, d.P), V = mmul(DICE_VIEW, M), hop = Math.max(0, z - 0.5);
+      d.el.style.transform = `translate3d(${(x * size).toFixed(1)}px,${((y - z * SIN) * size).toFixed(1)}px,${(z * COS * size).toFixed(1)}px)`;
+      d.cube.style.transform = `matrix3d(${V[0]},${V[3]},${V[6]},0,${V[1]},${V[4]},${V[7]},0,${V[2]},${V[5]},${V[8]},0,0,0,0,1)`;
+      DIE_FACES.forEach((f, k) => { const n = f[2](M); d.faces[k].style.filter = `brightness(${(0.56 + 0.47 * Math.max(0, n[0] * L[0] + n[1] * L[1] + n[2] * L[2])).toFixed(3)})`; });
+      d.shadow.style.transform = `translate3d(${((x + 0.22 + hop * 0.42) * size).toFixed(1)}px,${((y + 0.16 + hop * 0.3) * size).toFixed(1)}px,0) scale(${(1.18 + hop * 0.5).toFixed(2)})`;
+      d.shadow.style.opacity = (0.8 / (1 + hop)).toFixed(2);
+    });
   };
   const finish = () => {
     if (token !== BV.roll) return;
@@ -2810,16 +2974,15 @@ function playRoll(roll) {
     setTimeout(() => { if (token === BV.roll) { const s = $('#dice-stage'); if (s) s.innerHTML = ''; } }, 12700);
   };
   BV.rolling = true; diceLog();
-  if (still) { dice.forEach(d => place(d, 1)); return finish(); }
-  const t0 = performance.now();
+  if (still) { draw(nf - 1); return finish(); }
+  const t0 = performance.now(); Snd.roll(sim.events, t0);
   const frame = now => {
     if (token !== BV.roll) return;
-    if (!stage.isConnected) { BV.rolling = false; logRoll(roll); diceLog(); return Live.next(); }   // доску закрыли во время броска — результат всё равно засчитан
-    let done = true;
-    for (const d of dice) { const t = clamp((now - t0 - d.delay) / d.dur, 0, 1); if (t < 1) done = false; place(d, 1 - Math.pow(1 - t, 3)); }
-    if (done) finish(); else requestAnimationFrame(frame);
+    if (!stage.isConnected) { BV.rolling = false; Snd.stop(); logRoll(roll); diceLog(); return Live.next(); }   // доску закрыли во время броска — результат всё равно засчитан
+    const fi = Math.min(nf - 1, Math.max(0, Math.floor((now - t0) / 1000 * DSIM.FPS)));
+    draw(fi); if (fi >= nf - 1) finish(); else requestAnimationFrame(frame);
   };
-  dice.forEach(d => place(d, 0)); requestAnimationFrame(frame);
+  draw(0); requestAnimationFrame(frame);
 }
 
 /* Общие броски. На сайте в интернете результат броска сразу видят все, у кого сайт открыт.
@@ -3400,6 +3563,7 @@ const ACT = {
   'b-remove': () => { const it = selItem(); if (!it) return; boardSnap(); BV.b.items = BV.b.items.filter(x => x !== it); BV.sel = null; boardDraw(); boardTouch(); },
   'b-refresh': () => refreshViewer(true),
   'dice-roll': () => { if (!BV.rolling) rollDice(); },
+  'dice-sound': el => { Snd.toggle(); el.outerHTML = sndBtn(); },
   'dice-mod': el => { BV.mod = clamp(BV.mod + +el.dataset.v, -4, 12); diceLog(); },
   'dice-history': () => { BV.log = !BV.log; diceLog(); },
   'dice-secret': el => { BV.secret = !BV.secret; el.classList.toggle('on', BV.secret); Live.paint(); },
