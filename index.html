@@ -721,7 +721,7 @@ button.b-name:hover { background: var(--surface-2); }
 .fp-mini.on { background: var(--accent); box-shadow: inset 0 0 0 2px var(--accent), inset 0 0 0 3px rgba(0,0,0,.35), 0 1px 4px rgba(0,0,0,.6); opacity: 1; }
 @media (hover: hover) { .fp-mini:hover { transform: scale(1.18); opacity: 1; } }
 #b-fate { position: absolute; inset: 0; z-index: 40; pointer-events: none; overflow: hidden; }
-.fp-tray { --fp: 50px; position: absolute; display: flex; align-items: center; gap: 8px; pointer-events: auto; }
+.fp-tray { --fp: 56px; position: absolute; display: flex; align-items: center; gap: 8px; pointer-events: auto; }
 .fp-toks { display: flex; align-items: center; padding-left: 2px; }
 .fp-tok { width: var(--fp); height: var(--fp); flex: none; border-radius: 50%; background: radial-gradient(circle at 34% 28%, var(--surface-2), var(--surface) 72%); border: 2px solid var(--accent); box-shadow: inset 0 0 0 4px var(--surface), inset 0 0 0 5px var(--border), 0 3px 9px rgba(0,0,0,.5); }
 .fp-tok + .fp-tok { margin-left: calc(var(--fp) * (var(--q, 1.12) - 1)); }
@@ -733,6 +733,10 @@ button.b-name:hover { background: var(--surface-2); }
 .fp-btn:not(:disabled):active { transform: scale(.92); }
 .fp-note, .fp-more { padding: 4px 10px; border-radius: 99px; background: var(--surface); border: 1px solid var(--border); font-size: 12px; color: var(--muted); white-space: nowrap; box-shadow: 0 2px 6px rgba(0,0,0,.4); }
 .fp-more { padding: 3px 8px; color: var(--text); font-weight: 700; }
+.fp-tok.img, [data-theme="rome"] .fp-tok.img { background: none; border: 0; box-shadow: none; filter: drop-shadow(0 3px 5px rgba(0,0,0,.55)); }
+.fp-tok img, .fp-mini img { width: 100%; height: 100%; display: block; object-fit: cover; border-radius: 50%; pointer-events: none; }
+.fp-mini.img, [data-theme="rome"] .fp-mini.img { background: none; border: 0; box-shadow: 0 1px 4px rgba(0,0,0,.7); opacity: .92; }
+.fp-mini.img.on, [data-theme="rome"] .fp-mini.img.on { background: none; box-shadow: 0 0 0 2px var(--accent), 0 1px 4px rgba(0,0,0,.7); opacity: 1; }
 @keyframes fp-in { from { opacity: 0; transform: translateX(34px) scale(.55); } }
 @keyframes fp-pop { from { opacity: 0; transform: scale(.4); } 60% { transform: scale(1.12); } }
 .fp-tray.in .fp-tok { animation: fp-in .3s cubic-bezier(.2,.8,.3,1) backwards; animation-delay: calc(var(--i) * 35ms); }
@@ -748,7 +752,16 @@ button.b-name:hover { background: var(--surface-2); }
 @media (hover: hover) { .place-link:hover { text-decoration-color: currentColor; } }
 .facts .place-link span { display: inline; font-size: inherit; text-transform: none; letter-spacing: normal; color: inherit; }
 .facts .place-link { font-weight: 500; }
-.sh-place { display: flex; align-items: baseline; gap: 10px; padding: 0 0 9px; margin-bottom: -4px; border-bottom: 1px solid var(--border); font-size: 14px; min-width: 0; }
+.sh-place { display: flex; align-items: baseline; gap: 10px; padding: 7px 12px; border-bottom: 1px solid var(--border); font-size: 14.5px; min-width: 0; flex: none; }
+.sh-win.min .sh-place { display: none; }
+.pl-list { display: flex; flex-wrap: wrap; align-items: center; gap: 3px 12px; min-width: 0; }
+.pl-add { flex: none; width: 22px; height: 22px; display: inline-grid; place-items: center; border-radius: 50%; border: 1px solid var(--muted); color: var(--text); opacity: .7; padding: 0; align-self: center; }
+.pl-add svg { width: 12px; height: 12px; }
+@media (hover: hover) { .pl-add:hover { opacity: 1; } }
+@media (hover: hover) { .pl-add:hover { color: var(--accent); border-color: var(--accent); } }
+.facts .pl-fact .pl-list { display: flex; flex-direction: column; align-items: flex-start; gap: 4px; }
+.facts .pl-fact .pl-add { margin-top: 6px; }
+.facts .pl-fact .pl-list:empty + .pl-add { margin-top: 3px; }
 .sh-place > span { flex: none; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .1em; color: var(--muted); }
 .sh-place .place-link { min-width: 0; }
 .place-win { position: fixed; z-index: 55; width: min(520px, calc(100vw - 16px)); max-height: calc(100vh - 16px); display: flex; flex-direction: column; background: var(--surface); border: 1px solid var(--border); border-radius: calc(var(--radius) + 2px); box-shadow: var(--shadow); overflow: hidden; }
@@ -785,7 +798,7 @@ button.b-name:hover { background: var(--surface-2); }
 .rels { display: grid; gap: 8px; justify-items: start; }
 .rel-row { display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 3fr) auto; gap: 8px; align-items: center; width: 100%; }
 .rel-h { margin: 16px 0 8px; font-size: 11.5px; font-weight: 600; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); }
-.rel .mini .small { white-space: normal; }
+.rel .mini .small { white-space: normal; font-size: 14.5px; line-height: 1.4; }
 .rail-none { width: 66px; font-size: 11.5px; line-height: 1.3; color: var(--muted); text-align: center; }
 .sh-win { position: absolute; display: flex; flex-direction: column; min-width: 260px; min-height: 140px; max-width: 100%; background: var(--surface); border: 1px solid var(--border); border-radius: calc(var(--radius) + 2px); box-shadow: var(--shadow); overflow: hidden; resize: both; }
 .sh-win.min { height: auto !important; min-height: 0; resize: none; }
@@ -812,17 +825,25 @@ h4.sh-title { font: 700 11.5px/1.3 var(--font-body, inherit); letter-spacing: .0
 .sh-bhead .sh-title { flex: 1; font-weight: 700; color: var(--accent); }
 .sh-row { display: flex; align-items: flex-start; gap: 6px; min-height: 28px; }
 .sh-row.rated, .sh-row.track { align-items: center; }
-.sh-in { min-width: 0; font: inherit; font-size: 14px; line-height: 1.4; color: var(--text); background: transparent; border: 1px solid transparent; border-radius: 4px; padding: 3px 5px; margin: 0 -1px; }
+.sh-in { min-width: 0; font: inherit; font-size: 15px; line-height: 1.4; color: var(--text); background: transparent; border: 1px solid transparent; border-radius: 4px; padding: 3px 5px; margin: 0 -1px; }
 .sh-in:hover { border-color: var(--border); }
 .sh-in:focus { outline: none; border-color: var(--accent); background: var(--bg); }
 .sh-in::placeholder { color: var(--muted); opacity: .55; }
 .sh-win.editing .sh-in { border-color: var(--border); }
 textarea.sh-in { flex: 1; resize: none; overflow: hidden; display: block; }
 .sh-block[data-t="text"] textarea.sh-in { min-height: 54px; }
-.sh-k { flex: none; width: 104px; font-size: 12px; font-weight: 600; color: var(--muted); padding-top: 6px; line-height: 1.3; overflow-wrap: anywhere; }
-input.sh-k { padding-top: 3px; font-size: 12.5px; }
-.sh-text { flex: 1; font-size: 14px; line-height: 1.45; white-space: pre-wrap; overflow-wrap: anywhere; padding: 4px 0; }
-.sh-name { flex: 1; font-size: 14px; }
+.sh-k { flex: none; width: 104px; font-size: 13px; font-weight: 600; color: var(--muted); padding-top: 6px; line-height: 1.3; overflow-wrap: anywhere; }
+input.sh-k { padding-top: 3px; font-size: 13px; }
+.sh-text { flex: 1; font-size: 15px; line-height: 1.45; white-space: pre-wrap; overflow-wrap: anywhere; padding: 4px 0; }
+.sh-name { flex: 1; font-size: 15px; }
+.sh-row.stack { padding: 3px 0 7px; }
+.sh-row.stack + .sh-row.stack { border-top: 1px solid var(--border); padding-top: 7px; }
+.sh-st { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
+.sh-sname { font-weight: 700; font-size: 15.5px; }
+input.sh-sname { width: 100%; }
+.sh-st > textarea.sh-in { flex: none; width: 100%; }
+.sh-st > .sh-text { flex: none; }
+b.sh-sname { padding: 3px 0 0; overflow-wrap: anywhere; }
 span.sh-name { padding: 3px 0; }
 .sh-n { width: 46px; flex: none; text-align: center; font-weight: 700; font-variant-numeric: tabular-nums; -moz-appearance: textfield; appearance: textfield; }
 .sh-n::-webkit-outer-spin-button, .sh-n::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
@@ -891,7 +912,9 @@ span.sh-name { padding: 3px 0; }
 [data-theme="rome"] .sh-av { border-radius: 1px; border-color: #8a6a36; }
 [data-theme="rome"] .sh-ttl b { font-weight: 400; font-size: 17px; letter-spacing: .05em; text-transform: uppercase; color: #ecdfc6; text-shadow: 0 -1px 0 rgba(0,0,0,.8); }
 [data-theme="rome"] h4.sh-title, [data-theme="rome"] .sh-bhead .sh-title { font: 400 14.5px/1.3 var(--font-head); letter-spacing: .12em; text-transform: uppercase; color: #cfa456; }
-[data-theme="rome"] .sh-in, [data-theme="rome"] .sh-text, [data-theme="rome"] span.sh-name { font-family: var(--font-read); }
+[data-theme="rome"] .sh-in, [data-theme="rome"] .sh-text, [data-theme="rome"] span.sh-name, [data-theme="rome"] b.sh-sname { font-family: var(--font-read); font-size: 16px; }
+[data-theme="rome"] .sh-sname { font-size: 16.5px; }
+[data-theme="rome"] .sh-row.stack + .sh-row.stack { border-top-color: #4a3a26; }
 [data-theme="rome"] .sh-in, [data-theme="rome"] .sh-box, [data-theme="rome"] .sh-roll, [data-theme="rome"] .sh-x, [data-theme="rome"] .sh-tpl, [data-theme="rome"] .sh-secret { border-radius: 1px; }
 [data-theme="rome"] .sh-box { border: 1px solid #8a6a36; background: #120e0a; box-shadow: inset 0 0 0 2px #120e0a, inset 0 0 0 3px #3d2f1e; }
 [data-theme="rome"] .sh-box.on { border-color: #b3402d; background: #2a120d; }
@@ -904,7 +927,7 @@ span.sh-name { padding: 3px 0; }
   .b-top { left: 8px; top: 8px; }
   .b-rail { right: 8px; top: 8px; max-height: calc(100% - 150px); } .rail-p, .rail-none { width: 50px; } .rail-p { height: 50px; }
   .b-top { max-width: calc(100% - 86px); } .b-view { font-size: 0; gap: 0; padding: 5px 7px; } .b-view svg { width: 14px; height: 14px; }
-  .fp-tray { --fp: 38px; gap: 6px; } .fp-mini { left: 3px; top: 3px; width: 17px; height: 17px; }
+  .fp-tray { --fp: 42px; gap: 6px; } .fp-mini { left: 3px; top: 3px; width: 17px; height: 17px; }
   .rel-row { grid-template-columns: minmax(0, 1fr) auto; } .rel-row select { grid-column: 1 / -1; }
   .sh-k { width: 84px; } .b-tools { left: 8px; top: 62px; } .b-pen { left: 60px; top: 62px; }
   .b-zoom { display: none; }
@@ -1013,7 +1036,7 @@ const FIELDS = {
     { k: 'name', label: 'Имя', type: 'text', span: 4, req: true },
     { k: 'kind', label: 'Тип', type: 'select', span: 2, options: KIND },
     { k: 'role', label: 'Кто это', type: 'text', span: 3, ph: 'Журналистка, смотритель маяка…' },
-    { k: 'place', label: 'Место', type: 'select', span: 3, options: () => ({ '': '— не указано —', ...Object.fromEntries(list('locations').sort((a, b) => a.name.localeCompare(b.name, 'ru')).map(l => [l.id, esc(l.name)])) }) },
+    { k: 'places', label: 'Места, с которыми связан', type: 'links', of: 'locations', quick: 'Новое место…' },
     { k: 'player', label: 'Игрок', type: 'text', span: 3, ph: 'Кто играет этим персонажем' },
     { k: 'status', label: 'Статус', type: 'select', span: 3, options: CSTATUS },
     { k: 'body', label: 'Описание', type: 'rich', rows: 6, ph: 'Внешность, характер, предыстория' },
@@ -1049,7 +1072,7 @@ const FIELDS = {
 const DEFAULTS = {
   campaigns: () => ({ name: '', system: '', genre: '', body: '', cover: null }),
   sessions: () => ({ title: '', number: nextNumber(), date: today(), body: '', characters: [], locations: [], threads: [], images: [] }),
-  characters: () => ({ name: '', kind: 'npc', role: '', aliases: '', player: '', status: '', body: '', notes: '', portrait: null, images: [], relations: [], place: '' }),
+  characters: () => ({ name: '', kind: 'npc', role: '', aliases: '', player: '', status: '', body: '', notes: '', portrait: null, images: [], relations: [], places: [] }),
   locations: () => ({ name: '', kind: '', aliases: '', body: '', image: null, images: [], facts: ['', ''] }),
   threads: () => ({ title: '', status: 'open', body: '', characters: [] }),
   notes: () => ({ title: '', body: '', pinned: false }),
@@ -1151,6 +1174,11 @@ function normalize(st) {
   if (!THEMES.some(t => t.id === st.settings.theme)) st.settings.theme = 'midnight';
   if (!st.files || typeof st.files !== 'object') st.files = {};
   st.locations.forEach(l => { l.facts = cleanFacts(l.facts, true); });
+  st.characters.forEach(c => {
+    if (!Array.isArray(c.places)) c.places = [];
+    if (c.place) { if (!c.places.includes(c.place)) c.places.unshift(c.place); } delete c.place;      // раньше место было одно
+    if (c.sheet && Array.isArray(c.sheet.blocks)) for (const b of c.sheet.blocks) if (b && b.t === 'list' && b.stack == null && /трюк|stunt/i.test(b.title || '')) b.stack = true;
+  });
   st.boards = (Array.isArray(st.boards) ? st.boards : []).filter(b => b && b.id).map(b => Object.assign(b, { name: b.name || 'Доска', items: Array.isArray(b.items) ? b.items : [], strokes: Array.isArray(b.strokes) ? b.strokes.filter(x => x && Array.isArray(x.p) && x.p.length >= 2) : [] }));
   return st;
 }
@@ -1391,8 +1419,10 @@ function cleanFacts(v, trim) {
   while (a.length < 2) a.push('');
   return a;
 }
-const placeOf = c => (c && c.place && list('locations').find(l => l.id === c.place)) || null;
-const placeLink = c => { const l = placeOf(c); return l ? `<button type="button" class="place-link" data-act="place-open" data-id="${esc(l.id)}" title="Открыть окошко места">${ic('pin')}<span>${esc(l.name)}</span></button>` : ''; };
+const placesOf = c => { const all = list('locations'); return ((c && c.places) || []).map(id => all.find(l => l.id === id)).filter(Boolean); };
+const placeLinks = c => placesOf(c).map(l => `<button type="button" class="place-link" data-act="place-open" data-id="${esc(l.id)}" title="Открыть окошко места">${ic('pin')}<span>${esc(l.name)}</span></button>`).join('');
+const placeAdd = c => READONLY ? '' : `<button type="button" class="pl-add" data-act="place-menu" data-id="${esc(c.id)}" title="Добавить или убрать место" aria-label="Добавить или убрать место">${ic('plus')}</button>`;
+const placeFact = c => { const n = placesOf(c).length; return n || !READONLY ? `<div class="pl-fact"><span>${n > 1 ? 'Места' : 'Место'}</span><b class="pl-list">${placeLinks(c)}</b>${placeAdd(c)}</div>` : ''; };
 const placeRO = () => READONLY && !HOSTED;
 function factsHtml(l) {
   const f = cleanFacts(l.facts), ro = placeRO(), id = esc(l.id);
@@ -1479,7 +1509,7 @@ function viewCharacter(c) {
   <div class="detail left">
     <aside class="side">
       <div class="portrait">${src ? `<img src="${src}" alt="${esc(c.name)}" data-act="zoom" data-set="characters/${c.id}" data-i="0">` : `<span class="ph">${esc(initials(c.name))}</span>`}</div>
-      <div class="card"><div class="facts">${fact('Тип', KIND[c.kind])}${fact('Игрок', c.kind === 'pc' ? c.player : '')}${fact('Статус', c.status ? CSTATUS[c.status] : '')}${placeOf(c) ? `<div><span>Место</span><b>${placeLink(c)}</b></div>` : ''}${fact('Также', c.aliases)}${fact('Появлений в сессиях', String(ses.length))}</div></div>
+      <div class="card"><div class="facts">${fact('Тип', KIND[c.kind])}${fact('Игрок', c.kind === 'pc' ? c.player : '')}${fact('Статус', c.status ? CSTATUS[c.status] : '')}${placeFact(c)}${fact('Также', c.aliases)}${fact('Появлений в сессиях', String(ses.length))}</div></div>
     </aside>
     <div>
       <div class="page-head"><div><div class="eyebrow">${esc(c.role || (c.kind === 'pc' ? 'Персонаж игрока' : 'НИП'))}</div><h1>${esc(c.name)}</h1>${c.secret ? `<div class="sub">${lockPill(c)}</div>` : ''}</div>
@@ -1509,7 +1539,7 @@ function viewLocation(l) {
     ${src ? `<div class="place-hero"><img src="${src}" alt="" data-act="zoom" data-set="locations/${l.id}" data-i="0"></div>` : ''}
     <div class="section pf-sec" data-loc="${esc(l.id)}"><h2>Факты и аспекты</h2>${factsHtml(l)}</div>
     ${proseOr(l.body, l.id, 'Описания пока нет.')}
-    ${(who => who.length ? `<div class="section"><h2>Кто здесь</h2><div class="card pad"><div class="mini-list">${who.map(c => `<a class="mini" ${nav('characters/' + c.id)}>${avatar(c, 'md')}<div><div class="mini-t">${esc(c.name)}</div>${c.role ? `<div class="small muted">${esc(c.role)}</div>` : ''}</div></a>`).join('')}</div></div></div>` : '')(list('characters').filter(c => c.place === l.id).sort((a, b) => a.name.localeCompare(b.name, 'ru')))}
+    ${(who => who.length ? `<div class="section"><h2>Кто здесь</h2><div class="card pad"><div class="mini-list">${who.map(c => `<a class="mini" ${nav('characters/' + c.id)}>${avatar(c, 'md')}<div><div class="mini-t">${esc(c.name)}</div>${c.role ? `<div class="small muted">${esc(c.role)}</div>` : ''}</div></a>`).join('')}</div></div></div>` : '')(list('characters').filter(c => (c.places || []).includes(l.id)).sort((a, b) => a.name.localeCompare(b.name, 'ru')))}
     ${extra.length ? `<div class="section"><h2>Картинки</h2>${shots('locations/' + l.id, set)}</div>` : ''}
     <div class="section"><h2>Что здесь происходило</h2>${ses.length ? `<div class="card pad"><div class="mini-list">${ses.map(miniSession).join('')}</div></div>` : `<p class="muted">Пока не отмечено ни в одной сессии.</p>`}</div>`;
 }
@@ -1737,7 +1767,7 @@ function saveForm() {
   const req = FIELDS[type].find(f => f.req);
   if (req && !String(draft[req.k] || '').trim()) { toast(`Заполните поле «${req.label}»`); const i = $(`#form [data-k="${req.k}"]`); if (i) i.focus(); return; }
   for (const k in draft) if (typeof draft[k] === 'string' && k !== 'body' && k !== 'notes') draft[k] = draft[k].trim();
-  if (type === 'characters' && draft.place && !byId('locations', draft.place)) draft.place = '';
+  if (type === 'characters') draft.places = [...new Set(Array.isArray(draft.places) ? draft.places : [])].filter(id => byId('locations', id));
   if (type === 'characters') draft.relations = (Array.isArray(draft.relations) ? draft.relations : []).filter(r => r && r.to && r.to !== draft.id && byId('characters', r.to)).map(r => ({ to: r.to, text: String(r.text || '').trim().slice(0, 300) }));
   if (type === 'sessions') { const n = parseInt(draft.number, 10); draft.number = Number.isFinite(n) ? n : nextNumber(); }
   draft.updatedAt = Date.now();
@@ -1758,7 +1788,7 @@ async function deleteFromForm() {
   S[type] = S[type].filter(e => e.id !== draft.id);
   if (type !== 'sessions' && type !== 'notes') {
     S.sessions.forEach(s => { if (s[type]) s[type] = s[type].filter(i => i !== draft.id); });
-    if (type === 'locations') S.characters.forEach(c => { if (c.place === draft.id) c.place = ''; });
+    if (type === 'locations') S.characters.forEach(c => { c.places = (c.places || []).filter(i => i !== draft.id); });
     if (type === 'characters') { S.threads.forEach(t => { t.characters = (t.characters || []).filter(i => i !== draft.id); }); S.characters.forEach(c => { if (c.relations) c.relations = c.relations.filter(r => r.to !== draft.id); }); }
   }
   closeForm(true); save(); go(type); toast('Удалено');
@@ -1951,7 +1981,7 @@ function filterState(src, o = {}) {
   }
   st.sessions.forEach(x => { for (const k of ['characters', 'locations', 'threads']) x[k] = (x[k] || []).filter(id => keep[k].has(id)); });
   st.threads.forEach(x => { x.characters = (x.characters || []).filter(id => keep.characters.has(id)); });
-  st.characters.forEach(x => { x.relations = (x.relations || []).filter(r => r && keep.characters.has(r.to)); if (x.place && !keep.locations.has(x.place)) x.place = ''; });
+  st.characters.forEach(x => { x.relations = (x.relations || []).filter(r => r && keep.characters.has(r.to)); x.places = (x.places || []).filter(id => keep.locations.has(id)); });
   if (!o.charNotes) st.characters.forEach(x => { x.notes = ''; });
   st.characters.forEach(x => { if (x.sheet && x.sheet.secret) delete x.sheet; });
   st.boards = (src.boards || []).filter(b => cids.has(b.campaignId) && !b.secret).map(clone);
@@ -1959,7 +1989,7 @@ function filterState(src, o = {}) {
 }
 function usedImages(st) {
   const u = new Set(), add = id => { if (id) u.add(id); };
-  st.campaigns.forEach(c => { add(c.cover); for (const v of [c.bg, c.bgCustom]) if (v && !v.startsWith('preset:')) add(v); });
+  st.campaigns.forEach(c => { add(c.cover); add(c.fateImg); for (const v of [c.bg, c.bgCustom]) if (v && !v.startsWith('preset:')) add(v); });
   st.sessions.forEach(e => (e.images || []).forEach(add));
   st.characters.forEach(e => { add(e.portrait); (e.images || []).forEach(add); });
   st.locations.forEach(e => { add(e.image); (e.images || []).forEach(add); });
@@ -2288,7 +2318,7 @@ function publishDone(r) {
    Записывать в журнал может только ведущий. Поэтому правки игрока уходят ведущему по прямой связи, его браузер применяет их,
    рассылает всем и сохраняет. Пока сайт у ведущего закрыт, игроки только смотрят. */
 let HOSTED = false;                                   // игрок: ведущий сейчас на связи
-const GUEST_ACTS = new Set(['b-tool', 'b-color', 'b-size', 'b-undo', 'sh-edit', 'sh-add-row', 'sh-del-row', 'sh-add-block', 'sh-del-block', 'sh-move-block', 'sh-numbered', 'sh-box', 'sh-box-n', 'sh-step', 'fp-step', 'fp-make', 'pf-add']);
+const GUEST_ACTS = new Set(['b-tool', 'b-color', 'b-size', 'b-undo', 'sh-edit', 'sh-add-row', 'sh-del-row', 'sh-add-block', 'sh-del-block', 'sh-move-block', 'sh-numbered', 'sh-box', 'sh-box-n', 'sh-step', 'fp-step', 'fp-make', 'pf-add', 'sh-stack']);
 const boardRO = () => READONLY && !(HOSTED && !!BV.b && S.boards.includes(BV.b));
 const sheetRO = () => READONLY && !HOSTED;
 const sheetTyping = () => { const a = document.activeElement; return !!a && !!a.dataset && !!a.dataset.sf; };
@@ -3326,6 +3356,17 @@ const ACT = {
   'toggle-link': el => { const k = el.dataset.k, id = el.dataset.id, a = F.draft[k] = F.draft[k] || []; const i = a.indexOf(id); i < 0 ? a.push(id) : a.splice(i, 1); F.dirty = true; el.classList.toggle('on', i < 0); },
   'pick-img': async el => { const k = el.dataset.k; addImages(k, await pickFiles('image/*', el.dataset.multi)); },
   'place-open': el => placeOpen(el.dataset.id, el),
+  'place-menu': el => {
+    const c = S.characters.find(x => x.id === el.dataset.id); if (!c) return;
+    const all = list('locations').sort((a, b) => a.name.localeCompare(b.name, 'ru')), on = new Set(c.places || []);
+    openMenu(el, `<div class="menu-label">Места персонажа</div>` + (all.map(l => `<button class="${on.has(l.id) ? 'on' : ''}" data-act="place-toggle" data-id="${esc(l.id)}" data-ch="${esc(c.id)}">${ic('pin')}<span>${esc(l.name)}${l.secret ? ' (скрыто)' : ''}</span>${on.has(l.id) ? ic('check') : ''}</button>`).join('') || `<p class="menu-note">Мест пока нет. Заведите их во вкладке «Места».</p>`));
+  },
+  'place-toggle': el => {
+    const c = S.characters.find(x => x.id === el.dataset.ch), id = el.dataset.id; if (!c) return;
+    const a = Array.isArray(c.places) ? c.places : []; c.places = a.includes(id) ? a.filter(v => v !== id) : [...a, id]; c.updatedAt = Date.now(); save();
+    if ($('#board')) winRefresh(c.id); else renderView();
+    const btn = $$('[data-act="place-menu"]').find(n => n.dataset.id === c.id); if (btn) ACT['place-menu'](btn);
+  },
   'place-close': () => placeClose(),
   'pf-add': el => { const l = S.locations.find(x => x.id === el.dataset.id); if (!l || placeRO()) return; l.facts = cleanFacts(l.facts); if (l.facts.length >= FACTS_MAX) return; l.facts.push(''); const sec = el.closest('.pf-sec') || $('.pf-sec'); factsSync(l, null, true); const ins = sec ? $$('.pf-in', sec) : []; if (ins.length) ins[ins.length - 1].focus(); },
   'rel-add': () => { (F.draft.relations = Array.isArray(F.draft.relations) ? F.draft.relations : []).push({ to: '', text: '' }); F.dirty = true; refreshField('relations'); const n = $$('#form .rel-row select'); if (n.length) n[n.length - 1].focus(); },
@@ -3389,7 +3430,7 @@ const SH_TYPES = { list: 'Список строк', rated: 'Навыки с чи
 const SH_NEW = { list: ['Новый раздел', () => ({ k: '', v: '' })], rated: ['Навыки', () => ({ k: '', n: 0 })], track: ['Стресс', () => ({ k: '', boxes: [0, 0] })], counter: ['Счётчики', () => ({ k: '', n: 0 })], text: ['Заметки', null] };
 const shRows = (...ks) => ks.map(k => ({ k, v: '' }));
 const shPyramid = () => [4, 3, 3, 2, 2, 2, 1, 1, 1, 1].map(n => ({ k: '', n }));
-const shTail = () => [{ t: 'list', title: 'Трюки', rows: shRows('', '', '') }, { t: 'counter', title: 'Жетоны судьбы', rows: [{ k: 'Обновление', n: 3 }, { k: 'Сейчас', n: 3 }] }];
+const shTail = () => [{ t: 'list', title: 'Трюки', stack: true, rows: shRows('', '', '') }, { t: 'counter', title: 'Жетоны судьбы', rows: [{ k: 'Обновление', n: 3 }, { k: 'Сейчас', n: 3 }] }];
 const shCons = () => [{ t: 'list', title: 'Последствия', rows: shRows('Лёгкое (2)', 'Умеренное (4)', 'Тяжёлое (6)') }, { t: 'text', title: 'Заметки', text: '' }];
 const SHEETS = {
   core: { name: 'Fate Core', hint: 'навыки пирамидой, два трека стресса с номерами клеток', make: () => [{ t: 'list', title: 'Аспекты', rows: shRows('Концепция', 'Проблема', '', '', '') }, { t: 'rated', title: 'Навыки', rows: shPyramid() }, ...shTail(),
@@ -3417,7 +3458,7 @@ function railHtml() {
   if (!cast.length && READONLY) return `<div id="b-rail" hidden></div>`;
   return `<div class="b-panel b-rail ${SW.hide ? 'hide' : ''}" id="b-rail">
     <button class="b-btn" data-act="rail-toggle" title="${SW.hide ? 'Показать портреты' : 'Свернуть портреты'}" aria-label="Портреты персонажей">${ic('users')}</button>
-    <div class="rail-list">${cast.map(c => { const src = c.portrait && IMG[c.portrait], fp = SW.fp.has(c.id); return `<div class="rail-row" data-id="${esc(c.id)}"><button class="rail-p ${open.has(c.id) ? 'on' : ''}" data-act="sh-open" data-id="${esc(c.id)}" title="${esc(c.name)} — лист персонажа">${src ? `<img src="${esc(src)}" alt="">` : `<span class="ph">${esc(initials(c.name))}</span>`}<span class="nm">${esc(c.name.trim().split(/\s+/)[0])}</span></button>${c.sheet ? `<button class="fp-mini ${fp ? 'on' : ''}" data-act="fp-toggle" data-id="${esc(c.id)}" title="${fp ? 'Убрать жетоны судьбы' : 'Показать жетоны судьбы'}" aria-label="Жетоны судьбы: ${esc(c.name)}" aria-expanded="${fp}"></button>` : ''}</div>`; }).join('')
+    <div class="rail-list">${cast.map(c => { const src = c.portrait && IMG[c.portrait], fp = SW.fp.has(c.id); return `<div class="rail-row" data-id="${esc(c.id)}"><button class="rail-p ${open.has(c.id) ? 'on' : ''}" data-act="sh-open" data-id="${esc(c.id)}" title="${esc(c.name)} — лист персонажа">${src ? `<img src="${esc(src)}" alt="">` : `<span class="ph">${esc(initials(c.name))}</span>`}<span class="nm">${esc(c.name.trim().split(/\s+/)[0])}</span></button>${c.sheet ? `<button class="fp-mini ${fp ? 'on' : ''} ${fateSrc() ? 'img' : ''}" data-act="fp-toggle" data-id="${esc(c.id)}" title="${fp ? 'Убрать жетоны судьбы' : 'Показать жетоны судьбы'}" aria-label="Жетоны судьбы: ${esc(c.name)}" aria-expanded="${fp}">${fateSrc() ? `<img src="${esc(fateSrc())}" alt="" draggable="false">` : ''}</button>` : ''}</div>`; }).join('')
       || `<p class="rail-none">Портретов пока нет</p>`}</div>
     ${READONLY ? '' : `<button class="b-btn" data-act="sh-cast-menu" title="Выбрать, чьи портреты здесь стоят" aria-label="Выбрать персонажей">${ic('plus')}</button>`}
   </div>`;
@@ -3433,10 +3474,23 @@ function fateRow(c) {
   else for (let i = 0; i < bl.length && bi < 0; i++) if (bl[i].t === 'counter') { const j = (bl[i].rows || []).findIndex(r => FP_BLOCK.test(r.k || '')); if (j >= 0) { bi = i; ri = j; } }
   return bi < 0 || ri < 0 ? null : { bi, ri, b: bl[bi], row: bl[bi].rows[ri] };
 }
+const fateSrc = () => { const c = campaign(); return (c && c.fateImg && IMG[c.fateImg]) || ''; };
+/* Картинка жетона: квадрат 256 точек, прозрачность сохраняется (жетон показывается кругом). */
+function processToken(file) {
+  return new Promise((res, rej) => {
+    const fr = new FileReader(); fr.onerror = () => rej(new Error('read'));
+    fr.onload = () => {
+      const im = new Image(); im.onerror = () => rej(new Error('decode'));
+      im.onload = () => { const N = 256, cv = document.createElement('canvas'), k = Math.max(N / im.width, N / im.height), w = im.width * k, h = im.height * k; cv.width = cv.height = N; cv.getContext('2d').drawImage(im, (N - w) / 2, (N - h) / 2, w, h); res(cv.toDataURL('image/png')); };
+      im.src = fr.result;
+    };
+    fr.readAsDataURL(file);
+  });
+}
 function fateHtml(c, right, top, h) {
   const f = fateRow(c), ro = sheetRO(), n = f ? clamp(parseInt(f.row.n, 10) || 0, 0, 99) : 0, show = Math.min(n, FP_MAX), id = esc(c.id);
   const q = show > 5 ? (5 * 1.12 - 1) / (show - 1) : 1.12;      // больше пяти — жетоны ложатся внахлёст, ряд не растёт
-  const toks = Array.from({ length: show }, (_, i) => `<i class="fp-tok" style="--i:${show - 1 - i}"></i>`).join('');
+  const src = fateSrc(), toks = Array.from({ length: show }, (_, i) => `<i class="fp-tok ${src ? 'img' : ''}" style="--i:${show - 1 - i}">${src ? `<img src="${esc(src)}" alt="" draggable="false">` : ''}</i>`).join('');
   const body = !f ? `<span class="fp-note">В листе нет счётчика жетонов</span>${ro ? '' : `<span class="fp-ctl"><button class="fp-btn" data-act="fp-make" data-id="${id}" title="Добавить в лист раздел «Жетоны судьбы»" aria-label="Добавить счётчик жетонов">${ic('plus')}</button></span>`}`
     : `${n > FP_MAX ? `<b class="fp-more">+${n - FP_MAX}</b>` : ''}${n ? `<span class="fp-toks" style="--q:${q.toFixed(3)}">${toks}</span>` : `<span class="fp-note">Жетонов нет</span>`}${ro ? '' : `<span class="fp-ctl"><button class="fp-btn" data-act="fp-step" data-v="1" data-id="${id}" title="Дать жетон" aria-label="Дать жетон">${ic('plus')}</button><button class="fp-btn" data-act="fp-step" data-v="-1" data-id="${id}" title="Потратить жетон" aria-label="Потратить жетон" ${n ? '' : 'disabled'}>${ic('minus')}</button></span>`}`;
   return `<div class="fp-tray ${SW.fpNew === c.id ? 'in' : ''} ${SW.fpAdd === c.id ? 'add' : ''}" data-id="${id}" data-n="${n}" style="right:${Math.round(right)}px;top:${Math.round(top)}px;height:${Math.round(h)}px" role="group" aria-label="Жетоны судьбы, ${esc(c.name)}: ${n}" title="Жетоны судьбы: ${n}">${body}</div>`;
@@ -3467,6 +3521,8 @@ function blockHtml(b, bi, edit, ro) {
   const del = ri => edit ? x('sh-del-row', 'x', 'Убрать строку', ri) : '';
   let body = '';
   if (b.t === 'text') body = ro ? (b.text ? `<p class="sh-text">${esc(b.text)}</p>` : '') : area('text', b.text, 'Текст…');
+  else if (b.t === 'list' && b.stack) body = rows.map((r, ri) => ro ? (r.k || r.v ? `<div class="sh-row stack"><div class="sh-st">${r.k ? `<b class="sh-sname">${esc(r.k)}</b>` : ''}${r.v ? `<span class="sh-text">${esc(r.v)}</span>` : ''}</div></div>` : '')
+    : `<div class="sh-row stack"><div class="sh-st">${inp('k', r.k, 'Название', 'sh-sname', ri)}${area('v', r.v, 'Описание…', ri)}</div>${del(ri)}</div>`).join('');
   else if (b.t === 'list') body = rows.map((r, ri) => ro ? (r.k || r.v ? `<div class="sh-row">${r.k ? `<span class="sh-k">${esc(r.k)}</span>` : ''}<span class="sh-text">${esc(r.v)}</span></div>` : '')
     : `<div class="sh-row">${edit ? inp('k', r.k, 'подпись', 'sh-k', ri) : r.k ? `<span class="sh-k">${esc(r.k)}</span>` : ''}${area('v', r.v, '…', ri)}${del(ri)}</div>`).join('');
   else if (b.t === 'rated') body = rows.map((r, ri) => {
@@ -3481,7 +3537,7 @@ function blockHtml(b, bi, edit, ro) {
   else if (b.t === 'counter') body = rows.map((r, ri) => ro ? `<div class="sh-row rated"><span class="sh-name">${esc(r.k)}</span><b class="sh-n">${+r.n || 0}</b></div>`
     : `<div class="sh-row rated">${inp('k', r.k, 'Название', 'sh-name', ri)}${x('sh-step', 'minus', 'Меньше', ri, 'data-v="-1"')}${inp('n', +r.n || 0, '0', 'sh-n', ri, 'type="number" step="1"')}${x('sh-step', 'plus', 'Больше', ri, 'data-v="1"')}${del(ri)}</div>`).join('');
   if (ro && !body) return '';
-  const head = edit ? `<div class="sh-bhead">${inp('title', b.title, 'Название раздела', 'sh-title')}${b.t === 'track' ? x('sh-numbered', 'list', b.numbered ? 'Убрать номера в клетках' : 'Показать номера в клетках') : ''}${x('sh-move-block', 'front', 'Раздел выше', null, 'data-v="-1"')}${x('sh-move-block', 'back', 'Раздел ниже', null, 'data-v="1"')}${x('sh-del-block', 'trash', 'Удалить раздел')}</div>`
+  const head = edit ? `<div class="sh-bhead">${inp('title', b.title, 'Название раздела', 'sh-title')}${b.t === 'track' ? x('sh-numbered', 'list', b.numbered ? 'Убрать номера в клетках' : 'Показать номера в клетках') : ''}${b.t === 'list' ? x('sh-stack', 'list', b.stack ? 'Сделать обычными строками: подпись слева, текст справа' : 'Название над текстом и черта между строками (как у трюков)') : ''}${x('sh-move-block', 'front', 'Раздел выше', null, 'data-v="-1"')}${x('sh-move-block', 'back', 'Раздел ниже', null, 'data-v="1"')}${x('sh-del-block', 'trash', 'Удалить раздел')}</div>`
     : `<h4 class="sh-title">${esc(b.title || SH_TYPES[b.t])}</h4>`;
   return `<div class="sh-block" data-t="${b.t}">${head}${body}${!ro && b.t !== 'text' ? `<button class="textlink sh-add" data-act="sh-add-row" ${at}>+ строка</button>` : ''}</div>`;
 }
@@ -3502,7 +3558,7 @@ function winHtml(w, i) {
     <header class="sh-head">${src ? `<img class="sh-av" src="${esc(src)}" alt="">` : `<span class="sh-av">${esc(initials(c.name))}</span>`}<div class="sh-ttl"><b>${esc(c.name)}</b><span>${esc(sub)}</span></div>
       ${!ro && c.sheet ? `<button class="b-btn sm ${edit ? 'on' : ''}" data-act="sh-edit" title="${edit ? 'Закончить настройку' : 'Настроить лист: разделы, названия, строки'}" aria-label="Настроить лист">${ic('edit')}</button>${READONLY ? '' : `<button class="b-btn sm" data-act="sh-menu" title="Ещё" aria-label="Ещё">${ic('dots')}</button>`}` : ''}
       <button class="b-btn sm" data-act="sh-min" title="${w.min ? 'Развернуть' : 'Свернуть в полоску'}" aria-label="${w.min ? 'Развернуть' : 'Свернуть'}">${ic(w.min ? 'down' : 'minus')}</button><button class="b-btn sm" data-act="sh-close" title="Закрыть лист" aria-label="Закрыть лист">${ic('x')}</button>
-    </header><div class="sh-body">${placeOf(c) ? `<div class="sh-place"><span>Место</span>${placeLink(c)}</div>` : ''}${sheetBody(c, edit)}</div></section>`;
+    </header>${placesOf(c).length || !READONLY ? `<div class="sh-place"><span>${placesOf(c).length > 1 ? 'Места' : 'Место'}</span><div class="pl-list">${placeLinks(c)}${placeAdd(c)}</div></div>` : ''}<div class="sh-body">${sheetBody(c, edit)}</div></section>`;
 }
 const shGrow = t => { t.style.height = 'auto'; t.style.height = t.scrollHeight + 2 + 'px'; };
 function winsRender() {
@@ -3550,7 +3606,7 @@ function shCtx(el) {
 }
 function shTouch(c, redraw, focus, patch) { c.updatedAt = Date.now(); save(5000); if (redraw) winRefresh(c.id, focus); Live.sheet(c, patch); fateSync(c); }
 /* Строение листа: какие разделы и сколько в них строк и клеток. Если оно не менялось, чужие правки подставляются в открытый лист на месте. */
-const shSig = c => c.sheet ? c.sheet.blocks.map(b => b.t + ':' + (b.rows || []).map(r => (r.boxes ? r.boxes.length : '')).join(',')).join('|') : '';
+const shSig = c => c.sheet ? c.sheet.blocks.map(b => b.t + (b.stack ? 's' : '') + (b.numbered ? 'n' : '') + ':' + (b.rows || []).map(r => (r.boxes ? r.boxes.length : '')).join(',')).join('|') : '';
 const pubSheet = c => !!c && !c.secret && !!c.sheet && !c.sheet.secret;
 const cutStr = (v, n) => String(v == null ? '' : v).slice(0, n);
 function cleanBlocks(list) {
@@ -3570,6 +3626,7 @@ function cleanBlocks(list) {
         return row;
       });
       if (b.numbered) n.numbered = true;
+      if (b.t === 'list' && b.stack != null) n.stack = !!b.stack;
     }
     out.push(n);
   }
@@ -3639,6 +3696,13 @@ Object.assign(ACT, {
     const inp = $(`.sh-win[data-id="${c.id}"] .sh-n[data-b="${f.bi}"][data-r="${f.ri}"]`); if (inp) inp.value = n;
     shTouch(c, false, null, { bi: f.bi, bt: f.b.t, ri: f.ri, f: 'n', val: n });
   },
+  'fp-img': async () => {
+    closeMenu(); const files = (await pickFiles('image/*', false)).filter(f => f.type.startsWith('image/')); if (!files.length) return;
+    let data; try { data = await processToken(files[0]); } catch (e) { return toast('Не получилось прочитать картинку «' + files[0].name + '»'); }
+    const c = campaign(); if (!c) return; const id = uid(); IMG[id] = data; Store.put('img', id, data);
+    c.fateImg = id; c.updatedAt = Date.now(); save(); gcImages(); railRender(); toast('Картинка жетона заменена');
+  },
+  'fp-img-clear': () => { const c = campaign(); if (!c) return; c.fateImg = null; c.updatedAt = Date.now(); save(); gcImages(); railRender(); },
   'fp-make': el => {
     const c = shChar(el.dataset.id); if (!c || !c.sheet || fateRow(c) || sheetRO()) return;
     c.sheet.blocks.push({ t: 'counter', title: 'Жетоны судьбы', rows: [{ k: 'Обновление', n: 3 }, { k: 'Сейчас', n: 3 }] }); SW.fpNew = c.id; shTouch(c, true);
@@ -3660,7 +3724,7 @@ Object.assign(ACT, {
   'sh-edit': el => { const x = shCtx(el); if (!x) return; x.w.edit = !x.w.edit; winRefresh(x.c.id); },
   'sh-menu': el => {
     const x = shCtx(el); if (!x) return; SW.menuFor = x.c.id;
-    openMenu(el, `<button data-act="sh-secret">${ic('lock')}${x.c.sheet.secret ? 'Показывать лист другим' : 'Скрыть лист от других'}</button><button data-act="sh-page">${ic('users')}Страница персонажа</button><hr><div class="menu-label">Заменить заготовкой</div>${Object.entries(SHEETS).map(([k, t]) => `<button data-act="sh-tpl" data-v="${k}">${ic('book')}${t.name}</button>`).join('')}`, true);
+    openMenu(el, `<button data-act="sh-secret">${ic('lock')}${x.c.sheet.secret ? 'Показывать лист другим' : 'Скрыть лист от других'}</button><button data-act="sh-page">${ic('users')}Страница персонажа</button><hr><div class="menu-label">Жетоны судьбы — у всех персонажей</div><button data-act="fp-img">${ic('image')}${fateSrc() ? 'Заменить картинку жетона…' : 'Картинка жетона…'}</button>${fateSrc() ? `<button data-act="fp-img-clear">${ic('trash')}Убрать картинку жетона</button>` : ''}<hr><div class="menu-label">Заменить заготовкой</div>${Object.entries(SHEETS).map(([k, t]) => `<button data-act="sh-tpl" data-v="${k}">${ic('book')}${t.name}</button>`).join('')}`, true);
   },
   'sh-page': () => { const c = shChar(SW.menuFor); if (c) go('characters/' + c.id); },
   'sh-secret': el => { const x = shCtx(el); if (!x || !x.c.sheet) return; x.c.sheet.secret = !x.c.sheet.secret; shTouch(x.c, true); toast(x.c.sheet.secret ? 'Лист скрыт: его видите только вы' : 'Лист теперь виден всем, у кого есть ссылка', 3200); },
@@ -3675,6 +3739,7 @@ Object.assign(ACT, {
   'sh-add-block': el => { const x = shCtx(el), t = el.dataset.v; if (!x || !SH_NEW[t]) return; const b = { t, title: SH_NEW[t][0] }; if (t === 'text') b.text = ''; else b.rows = [SH_NEW[t][1]()]; x.c.sheet.blocks.push(b); shTouch(x.c, true, `.sh-title[data-b="${x.c.sheet.blocks.length - 1}"]`); },
   'sh-del-block': async el => { const x = shCtx(el); if (!x || !x.b) return; if (await confirmDialog(`Удалить раздел «${esc(x.b.title || SH_TYPES[x.b.t])}» со всем, что в нём записано?`)) { x.c.sheet.blocks.splice(x.c.sheet.blocks.indexOf(x.b), 1); shTouch(x.c, true); } },
   'sh-move-block': el => { const x = shCtx(el); if (!x || !x.b) return; const a = x.c.sheet.blocks, j = x.bi + +el.dataset.v; if (j < 0 || j >= a.length) return; [a[x.bi], a[j]] = [a[j], a[x.bi]]; shTouch(x.c, true); },
+  'sh-stack': el => { const x = shCtx(el); if (!x || !x.b || x.b.t !== 'list') return; x.b.stack = !x.b.stack; shTouch(x.c, true); },
   'sh-numbered': el => { const x = shCtx(el); if (!x || !x.b) return; x.b.numbered = !x.b.numbered; shTouch(x.c, true); },
   'sh-box': el => { const x = shCtx(el); if (!x || !x.row) return; const i = +el.dataset.i; x.row.boxes[i] = x.row.boxes[i] ? 0 : 1; el.classList.toggle('on', !!x.row.boxes[i]); el.setAttribute('aria-pressed', !!x.row.boxes[i]); shTouch(x.c, false, null, { bi: x.bi, bt: x.b.t, ri: x.ri, f: 'box', i, val: x.row.boxes[i] }); },
   'sh-box-n': el => { const x = shCtx(el); if (!x || !x.row) return; const bx = x.row.boxes = x.row.boxes || []; if (+el.dataset.v > 0) { if (bx.length < 12) bx.push(0); } else bx.pop(); shTouch(x.c, true); },
@@ -3691,7 +3756,7 @@ Object.assign(ACT, {
   },
 });
 
-const EDIT_ACTS = new Set(['new', 'edit', 'edit-campaign', 'new-campaign', 'del-campaign', 'create-menu', 'export', 'import', 'share', 'share-go', 'publish', 'publish-go', 'copy-link', 'owner-logout', 'sync-retry', 'bg', 'bg-set', 'bg-dim', 'bg-upload', 'b-tool', 'b-color', 'b-size', 'b-add-menu', 'b-upload', 'b-journal', 'b-pick', 'b-undo', 'b-clear', 'b-new', 'b-settings', 'b-save', 'b-del', 'b-lock', 'b-order', 'b-remove', 'sh-edit', 'sh-menu', 'sh-secret', 'sh-tpl', 'sh-add-row', 'sh-del-row', 'sh-add-block', 'sh-del-block', 'sh-move-block', 'sh-numbered', 'sh-box', 'sh-box-n', 'sh-step', 'sh-cast-menu', 'sh-cast-toggle', 'fp-step', 'fp-make', 'rel-add', 'rel-del', 'pf-add']);
+const EDIT_ACTS = new Set(['new', 'edit', 'edit-campaign', 'new-campaign', 'del-campaign', 'create-menu', 'export', 'import', 'share', 'share-go', 'publish', 'publish-go', 'copy-link', 'owner-logout', 'sync-retry', 'bg', 'bg-set', 'bg-dim', 'bg-upload', 'b-tool', 'b-color', 'b-size', 'b-add-menu', 'b-upload', 'b-journal', 'b-pick', 'b-undo', 'b-clear', 'b-new', 'b-settings', 'b-save', 'b-del', 'b-lock', 'b-order', 'b-remove', 'sh-edit', 'sh-menu', 'sh-secret', 'sh-tpl', 'sh-add-row', 'sh-del-row', 'sh-add-block', 'sh-del-block', 'sh-move-block', 'sh-numbered', 'sh-box', 'sh-box-n', 'sh-step', 'sh-cast-menu', 'sh-cast-toggle', 'fp-step', 'fp-make', 'rel-add', 'rel-del', 'pf-add', 'place-menu', 'place-toggle', 'fp-img', 'fp-img-clear', 'sh-stack']);
 
 document.addEventListener('click', e => {
   if (menuEl && !e.target.closest('.menu') && !e.target.closest('[data-act$="-menu"]')) closeMenu();
