@@ -76,7 +76,14 @@ svg.i { width: 18px; height: 18px; flex: none; fill: none; stroke: currentColor;
 ::selection { background: var(--accent); color: var(--accent-ink); }
 * { scrollbar-width: thin; scrollbar-color: var(--border) transparent; }
 
-.app { display: grid; grid-template-columns: 256px minmax(0, 1fr); height: 100vh; }
+.app { display: grid; grid-template-columns: 256px minmax(0, 1fr); height: 100vh; transition: grid-template-columns .25s ease; }
+.app.side-hidden, [data-theme="rome"] .app.side-hidden { grid-template-columns: 0 minmax(0, 1fr); }
+.app.side-hidden .sidebar { overflow: hidden; border-right: 0; visibility: hidden; }
+.side-tog { position: absolute; left: 0; top: 50%; transform: translateY(-50%); z-index: 50; width: 16px; height: 64px; display: grid; place-items: center; padding: 0; border: 1px solid var(--border); border-left: 0; border-radius: 0 8px 8px 0; background: var(--surface); color: var(--muted); opacity: .55; transition: opacity .15s, color .15s, width .15s; }
+.side-tog:hover, .side-tog:focus-visible { opacity: 1; color: var(--accent); width: 20px; }
+.side-tog svg { transition: transform .25s; }
+.app.side-hidden .side-tog svg { transform: scaleX(-1); }
+[data-theme="rome"] .side-tog { background: linear-gradient(90deg, #1d1711, #2a2117); border-color: #6a5334; color: #c9a45c; }
 
 /* ───────── Боковая панель ───────── */
 .sidebar { background: var(--surface); border-right: 1px solid var(--border); display: flex; flex-direction: column; min-height: 0; }
@@ -486,7 +493,9 @@ a.btn { text-decoration: none; }
   .brand { margin: 8px 10px 4px; width: calc(100% - 20px); padding: 7px 10px; }
   .nav { flex-direction: row; overflow-x: auto; padding: 4px 10px 8px; flex: none; }
   .nav a { padding: 7px 10px; white-space: nowrap; }
-  .nav .count, .nav-sep, .side-foot { display: none; }
+  .nav .count, .nav-sep, .side-foot, .side-tog { display: none; }
+  .app.side-hidden, [data-theme="rome"] .app.side-hidden { grid-template-columns: minmax(0, 1fr); }
+  .app.side-hidden .sidebar { visibility: visible; overflow: visible; border-bottom: 1px solid var(--border); }
   .topbar { padding: 10px 14px; } .view { padding: 18px 14px 60px; } .notice { padding: 10px 14px; }
   .only-narrow { display: inline-grid; }
   .topbar .spacer { display: none; }
@@ -2779,7 +2788,7 @@ function rollDice(label) {
 }
 /* Бросок как у настоящих костей: считается заранее, целиком. Длины — в размерах кубика, время — в секундах.
    box — края стола {x0, x1, y0, y1}; возвращает кадры (положение и поворот каждого кубика) и удары для звука. */
-const DSIM = { G: 62, E: 0.36, MU: 0.42, R: 0.71, FPS: 120, SUB: 2, MAX: 3.3 };
+const DSIM = { G: 62, E: 0.24, MU: 0.42, R: 0.71, FPS: 120, SUB: 2, MAX: 3.3 };
 function diceSim(n, box, rnd) {
   const { G, E, MU, R, FPS, SUB, MAX } = DSIM, I = 1 / 6, dt = 1 / (FPS * SUB), TAU = Math.PI * 2;
   const cross = (a, b) => [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]];
@@ -2790,7 +2799,7 @@ function diceSim(n, box, rnd) {
     const z0 = rnd(1.6, 2.6), p = [box.x0 + W / 2 + side * (W * rnd(0.3, 0.48)) + (i - (n - 1) / 2) * 0.9, Math.max(box.y1 + 1.2, box.yb + 0.95 + z0 * 0.56) + rnd(0, 1.2) + (i % 2) * 1.2, z0];   // старт — за нижним краем экрана
     const tx = aimX + (i - (n - 1) / 2) * gap + rnd(-0.4, 0.4), ty = aimY + rnd(-0.8, 0.8);
     // сила броска подобрана так, чтобы кубик докатился примерно до своей точки: путь ≈ 0.012·v² + 0.27·v
-    const dist = Math.hypot(tx - p[0], ty - p[1]), sp = Math.min(32, (Math.sqrt(0.0729 + 0.048 * dist) - 0.27) / 0.024 * rnd(0.92, 1.08)), v = [(tx - p[0]) / dist * sp, (ty - p[1]) / dist * sp, rnd(1.5, 4.5)], tum = rnd(9, 17);
+    const dist = Math.hypot(tx - p[0], ty - p[1]), sp = Math.min(32, (Math.sqrt(0.0729 + 0.048 * dist) - 0.27) / 0.024 * rnd(0.92, 1.08)), v = [(tx - p[0]) / dist * sp, (ty - p[1]) / dist * sp, rnd(1, 3)], tum = rnd(7, 13);
     const w = [v[1] / sp * tum + rnd(-4, 4), -v[0] / sp * tum + rnd(-4, 4), rnd(-7, 7)];
     dice.push({ p, v, w, R: mmul(mrot(0, 0, 1, rnd(0, TAU)), mmul(mrot(1, 0, 0, rnd(0, TAU)), mrot(0, 1, 0, rnd(0, TAU)))), t0: i * 0.06 + rnd(0, 0.04), ins: false, sleep: false, calm: 0, snd: -1, ease: null });
   }
@@ -2813,7 +2822,7 @@ function diceSim(n, box, rnd) {
       const p = d.p, v = d.v, w = d.w;
       v[2] -= G * dt; p[0] += v[0] * dt; p[1] += v[1] * dt; p[2] += v[2] * dt;
       const wl = Math.hypot(w[0], w[1], w[2]); if (wl > 1e-6) d.R = mmul(mrot(w[0] / wl, w[1] / wl, w[2] / wl, wl * dt), d.R);
-      if (wl > 34) { const f = 34 / wl; w[0] *= f; w[1] *= f; w[2] *= f; }
+      if (wl > 28) { const f = 28 / wl; w[0] *= f; w[1] *= f; w[2] *= f; }
       let pen = 0, bang = 0; const m = d.R;
       for (const c of C) {
         const r = [m[0] * c[0] + m[1] * c[1] + m[2] * c[2], m[3] * c[0] + m[4] * c[1] + m[5] * c[2], m[6] * c[0] + m[7] * c[1] + m[8] * c[2]], z = p[2] + r[2];
@@ -2892,9 +2901,16 @@ function diceClack(ctx, out, noise, at, s, kind) {
   const env = (peak, dur) => { const g = ctx.createGain(); g.gain.setValueAtTime(0.0001, at); g.gain.exponentialRampToValueAtTime(peak, at + 0.0015); g.gain.exponentialRampToValueAtTime(0.0001, at + dur); g.connect(out); return g; };
   const burst = (type, f, q, peak, dur) => { const src = ctx.createBufferSource(), fl = ctx.createBiquadFilter(); src.buffer = noise; fl.type = type; fl.frequency.value = f; fl.Q.value = q; src.connect(fl); fl.connect(env(peak, dur)); src.start(at, r(0, 0.18), dur + 0.02); };
   const ping = (f, peak, dur) => { const o = ctx.createOscillator(); o.type = 'sine'; o.frequency.setValueAtTime(f, at); o.connect(env(peak, dur)); o.start(at); o.stop(at + dur + 0.02); };
-  burst('bandpass', die ? r(3800, 5200) : r(2300, 3400), die ? 2.2 : 1.4, vol * (die ? 0.9 : 0.8), die ? r(0.02, 0.03) : r(0.03, 0.045));       // сухой щелчок кости
-  const f = die ? r(2700, 3500) : r(1250, 1900); ping(f, vol * 0.28, die ? 0.016 : 0.024); ping(f * r(1.45, 1.6), vol * 0.16, 0.014);
-  if (!die) burst('lowpass', r(260, 420), 0.8, vol * 0.75, r(0.05, 0.085));                                                                // стол отзывается глухо
+  const thump = (f0, peak, dur) => { const o = ctx.createOscillator(); o.type = 'sine'; o.frequency.setValueAtTime(f0, at); o.frequency.exponentialRampToValueAtTime(f0 * 0.55, at + dur); o.connect(env(peak, dur)); o.start(at); o.stop(at + dur + 0.02); };
+  if (die) {                                                                                                                        // камень о камень: твёрдый короткий щелчок без звона
+    burst('bandpass', r(2000, 2700), 1.1, vol * 0.85, r(0.018, 0.026));
+    burst('bandpass', r(900, 1300), 1.3, vol * 0.45, r(0.03, 0.04));
+    ping(r(1900, 2400), vol * 0.08, 0.01);
+  } else {                                                                                                                          // тяжёлая кость о стол: удар с весом
+    burst('lowpass', r(700, 1000), 0.7, vol * 0.95, r(0.06, 0.09));
+    thump(r(120, 170), vol * 0.9, r(0.07, 0.1));
+    burst('bandpass', r(1500, 2100), 1.2, vol * 0.4, r(0.015, 0.022));
+  }
 }
 const Snd = {
   ctx: null, out: null, noise: null, bus: null, muted: false,
@@ -2940,7 +2956,7 @@ function playRoll(roll) {
   const stage = $('#dice-stage'); if (!stage) return;
   const vals = roll.vals, token = ++BV.roll, cam = BV.cam || { x: 0, y: 0, k: 1 }, R = boardRect();
   // размер кубика привязан к доске: при 100% как раньше; если доска сильно уменьшена или увеличена — в разумных пределах на экране
-  const size = r1(clamp(clamp(R.width / 15, 44, 70) * cam.k, 26, 120) / cam.k), SIN = Math.sin(DICE_TILT), COS = Math.cos(DICE_TILT);
+  const base = clamp(R.width / 15, 44, 70), size = r1(clamp(base * cam.k, base * 0.7, 120) / cam.k), SIN = Math.sin(DICE_TILT), COS = Math.cos(DICE_TILT);
   stage.className = 'dice-stage'; stage.style.setProperty('--s', size + 'px');
   stage.innerHTML = `<div class="dice-floor">${vals.map(v => `<div class="die-shadow"></div><div class="die" data-v="${v}"><div class="cube">${DIE_FACES.map(f => `<div class="face f-${f[0]} ${SYM[f[1]]}"></div>`).join('')}</div></div>`).join('')}</div><div class="dice-banner" id="dice-banner"></div>`;
   diceCam();
@@ -3551,6 +3567,13 @@ const ACT = {
     if (!BV.b.strokes.length) return toast('Линий на доске нет');
     if (await confirmDialog('Стереть все линии на этой доске? Картинки останутся. Если передумаете, нажмите «Отменить».', 'Стереть')) { boardSnap(); BV.b.strokes = []; boardDraw(); boardTouch(); }
   },
+  'side-tog': () => {
+    const app = $('#app'), hide = !app.classList.contains('side-hidden'), w = $('#sidebar').offsetWidth;
+    app.classList.toggle('side-hidden', hide);
+    try { localStorage.setItem('cj-side-hidden', hide ? '1' : '0'); } catch (e) { /* нет памяти браузера */ }
+    if ($('#bworld') && BV.cam) { BV.cam.x += (hide ? 1 : -1) * w / 2; applyCam(); }          // картинки доски остаются по центру
+    setTimeout(() => window.dispatchEvent(new Event('resize')), 280);
+  },
   'b-zoom': el => { const r = boardRect(); if (el.dataset.v === 'fit') boardFit(); else zoomAt(r.width / 2, r.height / 2, el.dataset.v === 'in' ? 1.25 : 0.8); },
   'b-menu': el => openMenu(el, `<div class="menu-label">Доски кампании</div>` + (boardsOf().map(b => `<button class="${b === BV.b ? 'on' : ''}" data-act="b-switch" data-id="${esc(b.id)}">${ic('board')}${esc(b.name)}${b.secret && !READONLY ? ic('lock') : ''}</button>`).join('') || `<button class="on" data-act="b-noop">${ic('board')}${esc(BV.b.name)}</button>`) + (READONLY ? '' : `<hr><button data-act="b-new">${ic('plus')}Новая доска</button><button data-act="b-settings">${ic('edit')}Название и видимость</button>`)),
   'b-switch': el => { BV.ids[cid()] = el.dataset.id; renderView(); },
@@ -4064,9 +4087,11 @@ async function boot() {
     if (ok && navigator.storage && navigator.storage.persist) navigator.storage.persist().catch(() => {});
   }
   applyTheme();
+  try { if (localStorage.getItem('cj-side-hidden') === '1') $('#app').classList.add('side-hidden'); } catch (e) { /* нет памяти браузера */ }
   $('#app').innerHTML = `
     <aside class="sidebar" id="sidebar"></aside>
     <div class="main">
+      <button class="side-tog" data-act="side-tog" aria-label="Скрыть или показать левую панель" title="Скрыть / показать панель"><svg viewBox="0 0 10 24" width="10" height="24" aria-hidden="true"><path d="M7 5 L3 12 L7 19" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
       <div class="bgimg" id="bgimg"></div>
       <header class="topbar">
         <div class="search">${ic('search')}<input id="search-in" type="text" placeholder="Поиск по кампании" autocomplete="off" aria-label="Поиск по кампании"><kbd>Ctrl K</kbd><div class="search-results" id="search-results" hidden></div></div>
