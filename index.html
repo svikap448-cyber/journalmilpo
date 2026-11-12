@@ -622,6 +622,11 @@ a.btn { text-decoration: none; }
 .board[data-tool="move"] #bitems image, .board[data-tool="move"] #bitems rect { pointer-events: all; cursor: move; }
 .board.space #bitems image { cursor: grab; }
 .b-miss { fill: var(--surface-2); stroke: var(--border); stroke-dasharray: 8 6; }
+/* У зрителя картинка, которую двигает ведущий, едет плавно, а не рывками */
+.board.live #bitems > :not(.drag) { transition: x .12s linear, y .12s linear, width .12s linear, height .12s linear; }
+.b-view { white-space: nowrap; }
+.b-btn.busy { pointer-events: none; opacity: .7; }
+.b-btn.busy svg { animation: spin .8s linear infinite; }
 .b-outline { fill: none; stroke: var(--accent); pointer-events: none; }
 .b-handle { fill: #fff; stroke: var(--accent); cursor: nwse-resize; }
 .b-handle[data-h="ne"], .b-handle[data-h="sw"] { cursor: nesw-resize; }
@@ -636,9 +641,10 @@ a.btn { text-decoration: none; }
 .b-zoom span { min-width: 46px; text-align: center; font-size: 12.5px; font-weight: 600; color: var(--muted); font-variant-numeric: tabular-nums; }
 .b-seltools { z-index: 4; white-space: nowrap; }
 .b-btn { width: 36px; height: 36px; flex: none; display: inline-grid; place-items: center; border-radius: var(--radius); color: var(--muted); border: 1px solid transparent; }
-.b-btn:hover { background: var(--surface-2); color: var(--text); }
+@media (hover: hover) { .b-btn:hover { background: var(--surface-2); color: var(--text); } }
+.b-btn:active { transform: scale(.94); }
 .b-btn.on { background: var(--accent); color: var(--accent-ink); }
-.b-btn.danger:hover { color: var(--danger); }
+@media (hover: hover) { .b-btn.danger:hover { color: var(--danger); } }
 .b-btn.wide { width: auto; display: inline-flex; align-items: center; gap: 7px; padding: 0 11px; font-size: 13px; font-weight: 600; }
 .b-btn.sm { width: 26px; height: 26px; }
 .b-btn.sm svg.i { width: 14px; height: 14px; }
@@ -789,10 +795,10 @@ span.sh-name { padding: 3px 0; }
 [data-theme="rome"] .b-btn { border-radius: 1px; color: #d9c9a8; border-color: #57442d; background: var(--veins-light) 0 0 / 420px 260px, linear-gradient(180deg, #3a2f24, #261e16); box-shadow: inset 0 1px 0 rgba(255,235,190,.14), inset 0 -2px 4px rgba(0,0,0,.4); }
 [data-theme="rome"] .b-btn:nth-child(2n) { background-position: -130px -70px, 0 0; }
 [data-theme="rome"] .b-btn:nth-child(3n) { background-position: -260px -150px, 0 0; }
-[data-theme="rome"] .b-btn:hover { filter: brightness(1.22); border-color: var(--accent); color: #f3e6c8; }
+@media (hover: hover) { [data-theme="rome"] .b-btn:hover { filter: brightness(1.22); border-color: var(--accent); color: #f3e6c8; } }
 [data-theme="rome"] .b-btn.on { color: #2a1708; border-color: #f0d28a; background: linear-gradient(180deg, #e9c877, #b98a3c 55%, #9a6f2c); box-shadow: inset 0 1px 0 rgba(255,245,210,.6), inset 0 -2px 3px rgba(80,45,10,.5); }
 [data-theme="rome"] .b-btn.wide { font: 400 13.5px/1 var(--font-head); letter-spacing: .07em; text-transform: uppercase; }
-[data-theme="rome"] .b-btn.danger:hover { color: #f3a088; }
+@media (hover: hover) { [data-theme="rome"] .b-btn.danger:hover { color: #f3a088; } }
 [data-theme="rome"] .b-name { font: 400 17px/1 var(--font-head); letter-spacing: .06em; text-transform: uppercase; border-radius: 1px; }
 [data-theme="rome"] .b-size { border-radius: 1px; }
 [data-theme="rome"] .dice-row b, [data-theme="rome"] .dice-line.big .dice-sum { font-family: var(--font-head); font-size: 18px; font-weight: 400; }
@@ -1801,7 +1807,7 @@ const Sync = {
     clearTimeout(this.timer);
     if (this.running) { this.again = true; return; }
     this.running = true; this.again = false; this.pending = false; this.since = 0; this.quick = false; this.status = 'saving'; this.paint();
-    try { if (this.loading) await this.loading; await this.push(force); this.status = 'ok'; this.error = ''; this.conflict = false; }
+    try { if (this.loading) await this.loading; await this.push(force); this.status = 'ok'; this.error = ''; this.conflict = false; if (this.pubNew) { Live.saved(this.pubNew); this.pubNew = null; } }
     catch (e) {
       console.error(e); this.status = 'error';
       this.conflict = e instanceof GhError && e.where === 'ref';
@@ -1818,7 +1824,7 @@ const Sync = {
     const c = this.cfg;
     if (!this.prv || force) this.prv = await this.open(privT(c));
     if (!this.pub || force) this.pub = await this.open(pubT(c));
-    const snap = clone(S), pub = filterState(snap), pubImgs = usedImages(pub), old = snap.files || {};
+    const t0 = Date.now(), snap = clone(S), pub = filterState(snap), pubImgs = usedImages(pub), old = snap.files || {};
     const files = {}, plan = { prv: [], pub: [] }, entries = { prv: [], pub: [] };
     for (const id of usedImages(snap)) {
       if (!/^[\w-]+$/.test(id) || (!IMG[id] && !old[id])) continue;
@@ -1841,12 +1847,12 @@ const Sync = {
       const wanted = new Set(Object.entries(files).filter(([, f]) => f.priv === (key === 'prv')).map(([id, f]) => `img/${id}.${f.ext}`));
       for (const p of this[key].paths) if (p.startsWith('img/') && !wanted.has(p)) entries[key].push({ path: p, sha: null });
     }
-    snap.files = files; snap.savedAt = Date.now();
+    snap.files = files; snap.savedAt = t0;   // время снимка, а не конца загрузки: по нему зрители решают, что новее
     pub.files = {}; for (const [id, f] of Object.entries(files)) if (!f.priv) pub.files[id] = f.ext;
     const pubStr = JSON.stringify(pub);   // без времени сохранения: если открытая часть не менялась, её не трогаем
     const pubSame = !force && !entries.pub.length && pubStr === this.pubStr && !!this.pub.shas['public.json'];
     await this.commitDoc(this.prv, 'full.json', JSON.stringify(snap), entries.prv);
-    if (!pubSame) { pub.savedAt = snap.savedAt; await this.commitDoc(this.pub, 'public.json', JSON.stringify(pub), entries.pub); this.pubStr = pubStr; }
+    if (!pubSame) { pub.savedAt = snap.savedAt; await this.commitDoc(this.pub, 'public.json', JSON.stringify(pub), entries.pub); this.pubStr = pubStr; this.pubNew = { sha: this.pub.at.head, at: t0 }; }
     S.files = files;
   },
   /* Записывает файл с данными. Если меняется только он — одним запросом; если вместе с картинками — общей «пачкой». */
@@ -1904,17 +1910,43 @@ async function loadOwner(token) {
     if (hidden.length && $('#view')) render();
   })();
 }
-async function loadViewer() {
-  const t = pubT(ONLINE); let text;
-  try { text = await GH.api('GET', `${repoBase(t)}/contents/public.json?ref=${t.branch}`, null, { raw: true, anon: true }); }
-  catch (e) {
-    const res = await fetch(rawUrl(t, 'public.json'), { cache: 'no-store' }).catch(() => null);
-    if (!res || !res.ok) throw e;
-    text = await res.text();
-  }
+/* Запрос с пределом по времени: зависшее соединение не должно «вешать» страницу и кнопки */
+async function fetchT(url, opts, ms) {
+  const ac = window.AbortController ? new AbortController() : null, tm = ac && setTimeout(() => ac.abort(), ms);
+  try { const res = await fetch(url, ac ? { ...opts, signal: ac.signal } : opts); return { ok: res.ok, status: res.status, text: res.ok ? await res.text() : '' }; }
+  finally { clearTimeout(tm); }
+}
+/* Зритель читает открытую часть журнала. Если известен номер сохранения (его присылает ведущий), берём именно его:
+   такой адрес ни у кого не залёживается в памяти, и число запросов по нему не ограничено. */
+async function loadViewer(sha) {
+  const t = pubT(ONLINE), opts = { cache: 'no-store' }; let text = null, err = null;
+  const get = async (url, o, ms) => {
+    try { const r = await fetchT(url, o, ms); if (r.ok) return r.text; err = new GhError(r.status, ''); } catch (e) { err = new GhError(0, 'network'); }
+    return null;
+  };
+  if (sha) for (let i = 0; i < 3 && text === null; i++) { if (i) await sleep(1200); text = await get(rawUrl({ ...t, branch: sha }, 'public.json'), opts, 8000); }
+  if (text === null) text = await get(`https://api.github.com${repoBase(t)}/contents/public.json?ref=${t.branch}`, { ...opts, headers: { Accept: 'application/vnd.github.raw+json' } }, 10000);
+  if (text === null) text = await get(rawUrl(t, 'public.json'), opts, 10000);
+  if (text === null) throw err;
   const st = JSON.parse(text), files = st.files || {};
+  if (S && SHARED_AT && st.savedAt && st.savedAt < SHARED_AT) return false;   // пришла более старая копия, чем уже показана
+  const old = S ? IMG : {};
   S = normalize(st); IMG = {}; SHARED_AT = st.savedAt || null;
-  for (const [id, ext] of Object.entries(files)) IMG[id] = rawUrl(t, `img/${id}.${ext}`);
+  for (const [id, ext] of Object.entries(files)) {
+    const cur = old[id], thumb = !!cur && cur.startsWith('data:');
+    const url = cur && !thumb ? cur : rawUrl(sha ? { ...t, branch: sha } : t, `img/${id}.${ext}`);   // адрес уже показанной картинки не меняем, иначе она загрузится заново
+    IMG[id] = thumb ? cur : url;
+    if (thumb) swapThumb(id, url);
+  }
+  for (const id of Live.thumbs) if (!IMG[id] && old[id]) IMG[id] = old[id];   // картинка, которую ведущий ещё не успел сохранить
+  return true;
+}
+/* Уменьшенная копия картинки заменяется настоящей, когда та загрузится */
+function swapThumb(id, url, n = 0) {
+  const im = new Image();
+  im.onload = () => { Live.thumbs.delete(id); if (IMG[id] && IMG[id].startsWith('data:')) { IMG[id] = url; if ($('#board') && BV.b && !BV.drag) boardDraw(); } };
+  im.onerror = () => { if (n < 4) setTimeout(() => swapThumb(id, url, n + 1), 3000); };
+  im.src = url;
 }
 let bootNote = '';
 async function bootOnline() {
@@ -2075,8 +2107,43 @@ function publishDone(r) {
     `<span class="spacer"></span><button class="btn ghost" data-act="dlg-close">Закрыть</button><a class="btn primary" href="${esc(ownerUrl)}" target="_blank" rel="noopener">Открыть сайт как владелец</a>`, 620);
 }
 
+/* ═════════ Игроки меняют доску и листы ═════════
+   Записывать в журнал может только ведущий. Поэтому правки игрока уходят ведущему по прямой связи, его браузер применяет их,
+   рассылает всем и сохраняет. Пока сайт у ведущего закрыт, игроки только смотрят. */
+let HOSTED = false;                                   // игрок: ведущий сейчас на связи
+const GUEST_ACTS = new Set(['b-tool', 'b-color', 'b-size', 'b-undo', 'sh-edit', 'sh-add-row', 'sh-del-row', 'sh-add-block', 'sh-del-block', 'sh-move-block', 'sh-numbered', 'sh-box', 'sh-box-n', 'sh-step']);
+const boardRO = () => READONLY && !(HOSTED && !!BV.b && S.boards.includes(BV.b));
+const sheetRO = () => READONLY && !HOSTED;
+const sheetTyping = () => { const a = document.activeElement; return !!a && !!a.dataset && !!a.dataset.sf; };
+/* Одно действие на доске: сдвиг картинки, новые линии, стирание. Одинаково применяется у игрока и у ведущего. */
+function applyOp(b, op) {
+  if (op.k === 'move') {
+    const it = b.items.find(x => x.id === (op.it && op.it.id)), n = it && cleanItem({ ...op.it, img: '-' });
+    if (!it || it.lock || !n || (it.x === n.x && it.y === n.y && it.w === n.w && it.h === n.h)) return false;
+    it.x = n.x; it.y = n.y; it.w = n.w; it.h = n.h; return true;
+  }
+  if (op.k === 'line') {
+    const have = new Set(b.strokes.map(shash)); let ch = false;
+    for (const raw of (Array.isArray(op.ss) ? op.ss.slice(0, 400) : [])) { const st = cleanStroke(raw); if (st && !have.has(shash(st))) { b.strokes.push(st); have.add(shash(st)); ch = true; } }
+    return ch;
+  }
+  if (op.k === 'erase') {
+    const gone = new Set(Array.isArray(op.h) ? op.h : []), left = b.strokes.filter(st => !gone.has(shash(st)));
+    if (left.length === b.strokes.length) return false; b.strokes = left; return true;
+  }
+  return false;
+}
+function hostUi() {
+  const el = $('#board'); if (!el) return;
+  const ro = boardRO(), gt = $('#b-gtools'), pen = $('#b-pen');
+  if (ro) BV.sel = null;
+  el.dataset.tool = ro ? 'move' : BV.tool; if (gt) gt.hidden = ro; if (pen) pen.hidden = ro || BV.tool !== 'pen';
+  boardChrome(); boardSelUi();
+  if (sheetTyping()) $$('.sh-win').forEach(w => { w.dataset.stale = '1'; }); else winsRender();
+}
+
 /* ═════════ Доска: картинки, маркер и кубики FATE ═════════ */
-const BV = { ids: {}, cams: {}, b: null, cam: null, tool: 'move', color: '#e5484d', size: 1, sel: null, undo: [], blank: null, drag: null, pts: new Map(), space: false, mod: 0, rolls: [], roll: 0, log: false, secret: false };
+const BV = { ids: {}, cams: {}, b: null, cam: null, tool: 'move', color: '#e5484d', size: 1, sel: null, undo: [], gundo: [], blank: null, drag: null, pts: new Map(), space: false, mod: 0, rolls: [], roll: 0, log: false, secret: false };
 const B_COLORS = ['#e5484d', '#f2a33c', '#f2d94c', '#3fb86b', '#4a9df0', '#f4f1e8', '#17171a'];
 const B_SIZES = [2.5, 5, 11];
 const LADDER = { 8: 'Легендарный', 7: 'Эпический', 6: 'Фантастический', 5: 'Великолепный', 4: 'Отличный', 3: 'Хороший', 2: 'Неплохой', 1: 'Средний', 0: 'Посредственный', '-1': 'Плохой', '-2': 'Ужасный' };
@@ -2096,11 +2163,15 @@ function curBoard() {
 function boardTouch() {
   const b = BV.b; if (!b || READONLY) return;
   if (!S.boards.includes(b)) { S.boards.push(b); BV.blank = null; BV.ids[cid()] = b.id; }
-  b.updatedAt = Date.now(); save(5000); boardChrome();
+  b.updatedAt = Date.now(); save(5000); boardChrome(); Live.bstate(b);
 }
 function boardSnap() { const b = BV.b; BV.undo.push(JSON.stringify({ id: b.id, items: b.items, strokes: b.strokes })); if (BV.undo.length > 40) BV.undo.shift(); }
 function boardUndo() {
-  const b = BV.b; if (!b || READONLY) return;
+  const b = BV.b; if (!b || boardRO()) return;
+  if (READONLY) {                              // игрок отменяет своё последнее действие: ведущему уходит обратное
+    const inv = BV.gundo.pop(); if (!inv || inv.b !== b.id) { BV.gundo = []; return toast('Отменять больше нечего'); }
+    Live.gop(inv); return;
+  }
   const last = BV.undo.pop(); if (!last) return toast('Отменять больше нечего');
   const u = JSON.parse(last); if (u.id !== b.id) return;
   b.items = u.items; b.strokes = u.strokes; BV.sel = null; boardDraw(); boardTouch();
@@ -2109,7 +2180,8 @@ function boardUndo() {
 function viewBoard() {
   const b = curBoard(), many = boardsOf().length > 1;
   const tool = (v, icon, label, key) => `<button class="b-btn ${BV.tool === v ? 'on' : ''}" data-act="b-tool" data-v="${v}" title="${label}${key ? ' (' + key + ')' : ''}" aria-label="${label}">${ic(icon)}</button>`;
-  return `<div class="board" id="board" data-tool="${READONLY ? 'move' : BV.tool}">
+  const ro = READONLY && !(HOSTED && S.boards.includes(b)), gtool = ONLINE && READONLY;
+  return `<div class="board${READONLY ? ' ro' : ''}${ONLINE ? ' live' : ''}" id="board" data-tool="${ro ? 'move' : BV.tool}">
     <svg class="bsvg" id="bsvg" xmlns="http://www.w3.org/2000/svg">
       <defs><pattern id="bdots" width="28" height="28" patternUnits="userSpaceOnUse"><circle cx="1.2" cy="1.2" r="1.2" class="b-dot"/></pattern></defs>
       <rect id="bgrid" width="100%" height="100%" fill="url(#bdots)"/>
@@ -2124,18 +2196,23 @@ function viewBoard() {
       <span id="b-lock"></span>
       ${ONLINE && READONLY ? `<button class="b-btn wide" data-act="b-refresh" title="Загрузить свежую версию доски">${ic('refresh')}<span>Обновить</span></button>` : ''}
     </div>
+    ${gtool ? `<div class="b-panel b-tools" id="b-gtools" ${ro ? 'hidden' : ''}>
+      ${tool('move', 'cursor', 'Двигать картинки и лист', 'V')}${tool('pen', 'pen', 'Маркер', 'M')}${tool('erase', 'eraser', 'Ластик: стирает линии', 'E')}
+      <i class="b-sep"></i>
+      <button class="b-btn" data-act="b-undo" title="Отменить моё последнее действие (Ctrl+Z)" aria-label="Отменить">${ic('undo')}</button>
+    </div>` : ''}
     ${READONLY ? '' : `<div class="b-panel b-tools">
       ${tool('move', 'cursor', 'Двигать картинки и лист', 'V')}${tool('pen', 'pen', 'Маркер', 'M')}${tool('erase', 'eraser', 'Ластик: стирает линии', 'E')}
       <i class="b-sep"></i>
       <button class="b-btn" data-act="b-add-menu" title="Добавить картинку" aria-label="Добавить картинку">${ic('image')}</button>
       <button class="b-btn" data-act="b-undo" title="Отменить (Ctrl+Z)" aria-label="Отменить">${ic('undo')}</button>
       <button class="b-btn" data-act="b-clear" title="Стереть все линии" aria-label="Стереть все линии">${ic('trash')}</button>
-    </div>
-    <div class="b-panel b-pen" id="b-pen" ${BV.tool === 'pen' ? '' : 'hidden'}>
+    </div>`}
+    ${!READONLY || gtool ? `<div class="b-panel b-pen" id="b-pen" ${BV.tool === 'pen' && !ro ? '' : 'hidden'}>
       <div class="b-colors">${B_COLORS.map(c => `<button class="b-color ${BV.color === c ? 'on' : ''}" data-act="b-color" data-v="${c}" style="--c:${c}" aria-label="Цвет"></button>`).join('')}</div>
       <div class="b-sizes">${B_SIZES.map((s, i) => `<button class="b-size ${BV.size === i ? 'on' : ''}" data-act="b-size" data-v="${i}" aria-label="Толщина"><i style="width:${4 + i * 5}px;height:${4 + i * 5}px"></i></button>`).join('')}</div>
-    </div>
-    <div class="b-panel b-seltools" id="b-seltools" hidden></div>`}
+    </div>` : ''}
+    ${READONLY ? '' : `<div class="b-panel b-seltools" id="b-seltools" hidden></div>`}
     <div class="b-panel b-zoom">
       <button class="b-btn" data-act="b-zoom" data-v="out" title="Отдалить" aria-label="Отдалить">${ic('minus')}</button>
       <span id="bzoom">100%</span>
@@ -2155,7 +2232,7 @@ function viewBoard() {
 }
 function boardMount() {
   const el = $('#board'); if (!el) return;
-  const b = curBoard(); if (BV.b !== b) { BV.undo = []; BV.sel = null; }
+  const b = curBoard(); if (!BV.b || BV.b.id !== b.id) { BV.undo = []; BV.sel = null; }
   BV.b = b; BV.drag = null; BV.pts.clear();
   const svg = $('#bsvg');
   svg.addEventListener('pointerdown', bDown); svg.addEventListener('pointermove', bMove);
@@ -2167,7 +2244,8 @@ function boardMount() {
 }
 function boardChrome() {
   const b = BV.b, n = $('#b-name'), l = $('#b-lock'); if (!b || !n) return;
-  n.textContent = b.name; l.innerHTML = b.secret && !READONLY ? `<span class="pill plain" title="Эту доску видите только вы">${ic('lock')}Скрыта от других</span>` : '';
+  n.textContent = b.name; l.innerHTML = b.secret && !READONLY ? `<span class="pill plain" title="Эту доску видите только вы">${ic('lock')}Скрыта от других</span>`
+    : ONLINE && READONLY && !HOSTED ? `<span class="pill plain b-view" title="Менять доску и листы можно, пока сайт открыт у ведущего. Сейчас его нет на связи.">${ic('lock')}Только просмотр</span>` : '';
 }
 const boardRect = () => $('#board').getBoundingClientRect();
 function toWorld(e) { const r = boardRect(), c = BV.cam; return [(e.clientX - r.left - c.x) / c.k, (e.clientY - r.top - c.y) / c.k]; }
@@ -2199,22 +2277,31 @@ function strokePath(p) {
 }
 const strokeSvg = s => `<path d="${strokePath(s.p)}" stroke="${esc(s.c)}" stroke-width="${+s.w || 3}"/>`;
 function boardDraw() {
-  const b = BV.b;
-  $('#bitems').innerHTML = b.items.map(it => IMG[it.img]
-    ? `<image data-id="${esc(it.id)}" href="${esc(IMG[it.img])}" x="${it.x}" y="${it.y}" width="${it.w}" height="${it.h}" preserveAspectRatio="none"/>`
-    : `<rect class="b-miss" data-id="${esc(it.id)}" x="${it.x}" y="${it.y}" width="${it.w}" height="${it.h}"/>`).join('');
+  const b = BV.b, g = $('#bitems'), old = new Map();
+  for (const n of [...g.children]) old.set(n.dataset.id + '|' + n.tagName, n);
+  b.items.forEach((it, i) => {
+    const src = IMG[it.img], tag = src ? 'image' : 'rect', key = it.id + '|' + tag; let n = old.get(key);
+    if (n) old.delete(key);
+    else { n = document.createElementNS('http://www.w3.org/2000/svg', tag); n.dataset.id = it.id; if (src) n.setAttribute('preserveAspectRatio', 'none'); else n.setAttribute('class', 'b-miss'); }
+    if (src && n.getAttribute('href') !== src) n.setAttribute('href', src);
+    n.setAttribute('x', it.x); n.setAttribute('y', it.y); n.setAttribute('width', it.w); n.setAttribute('height', it.h);
+    if (g.children[i] !== n) g.insertBefore(n, g.children[i] || null);
+  });
+  old.forEach(n => n.remove());
   $('#bstrokes').innerHTML = b.strokes.map(strokeSvg).join('');
+  if (BV.drag && BV.drag.type === 'pen' && BV.drag.el) $('#bstrokes').append(BV.drag.el);   // линию, которую сейчас ведут, не теряем
   $('#b-empty').hidden = !!(b.items.length || b.strokes.length);
   boardSelUi();
 }
 const selItem = () => BV.b && BV.b.items.find(it => it.id === BV.sel);
 function boardSelUi() {
   const g = $('#bsel'), bar = $('#b-seltools'); if (!g) return;
-  const it = !READONLY && selItem(), c = BV.cam;
+  const it = !boardRO() && selItem(), c = BV.cam;
   if (!it) { g.innerHTML = ''; if (bar) bar.hidden = true; return; }
   const h = 6 / c.k, corner = (n, x, y) => `<rect class="b-handle" data-h="${n}" x="${x - h}" y="${y - h}" width="${h * 2}" height="${h * 2}" stroke-width="${1.5 / c.k}"/>`;
   g.innerHTML = `<rect class="b-outline" x="${it.x}" y="${it.y}" width="${it.w}" height="${it.h}" stroke-width="${1.5 / c.k}"/>` +
     (it.lock ? '' : corner('nw', it.x, it.y) + corner('ne', it.x + it.w, it.y) + corner('sw', it.x, it.y + it.h) + corner('se', it.x + it.w, it.y + it.h));
+  if (!bar) return;                             // игроку панель с «закрепить / удалить» не нужна
   const key = it.id + (it.lock ? 'L' : '');
   if (bar.hidden || bar.dataset.for !== key) {
     bar.dataset.for = key;
@@ -2229,7 +2316,7 @@ function boardSelUi() {
   bar.style.top = clamp(c.y + it.y * c.k - 54, 62, Math.max(62, r.height - 60)) + 'px';
 }
 function setTool(v) {
-  if (READONLY) return; BV.tool = v; if (v !== 'move') BV.sel = null;
+  if (boardRO()) return; BV.tool = v; if (v !== 'move') BV.sel = null;
   const el = $('#board'); if (!el) return;
   el.dataset.tool = v; $$('[data-act="b-tool"]', el).forEach(b => b.classList.toggle('on', b.dataset.v === v));
   $('#b-pen').hidden = v !== 'pen'; boardSelUi();
@@ -2260,8 +2347,14 @@ function eraseAt(x, y) {
     return false;
   };
   const left = b.strokes.filter(s => !hit(s)); if (left.length === b.strokes.length) return;
+  if (READONLY) { const gone = b.strokes.filter(hit); if (Live.gop({ k: 'erase', b: b.id, h: gone.map(shash) })) (BV.drag.gone = BV.drag.gone || []).push(...gone); return; }
   if (!BV.drag.snapped) { boardSnap(); BV.drag.snapped = true; }
-  b.strokes = left; $('#bstrokes').innerHTML = b.strokes.map(strokeSvg).join(''); BV.drag.changed = true;
+  b.strokes = left; $('#bstrokes').innerHTML = b.strokes.map(strokeSvg).join(''); BV.drag.changed = true; Live.bstate(b);
+}
+/* Начало сдвига: у ведущего — снимок для «Отменить», у игрока — прежнее место картинки */
+function dragStart(d, node) {
+  const it = d.it; if (READONLY) d.from = { id: it.id, x: it.x, y: it.y, w: it.w, h: it.h }; else boardSnap();
+  if (node) { node.classList.add('drag'); d.dn = node; }
 }
 function startPan(e) { BV.drag = { type: 'pan', sx: e.clientX, sy: e.clientY, cx: BV.cam.x, cy: BV.cam.y }; $('#board').classList.add('panning'); }
 function bDown(e) {
@@ -2277,7 +2370,7 @@ function bDown(e) {
   if (BV.pts.size > 2) return;
   try { e.currentTarget.setPointerCapture(e.pointerId); } catch (err) { /* не страшно */ }
   const [x, y] = toWorld(e);
-  if (e.button === 1 || BV.space || READONLY) return startPan(e);
+  if (e.button === 1 || BV.space || boardRO()) return startPan(e);
   if (BV.tool === 'pen') {
     const el = document.createElementNS('http://www.w3.org/2000/svg', 'path'), w = r1(B_SIZES[BV.size] / BV.cam.k);
     el.setAttribute('stroke', BV.color); el.setAttribute('stroke-width', w); $('#bstrokes').append(el);
@@ -2308,23 +2401,23 @@ function bMove(e) {
       const [x, y] = toWorld(ev), n = d.p.length;
       if (Math.hypot(x - d.p[n - 2], y - d.p[n - 1]) * c.k >= 1.5) d.p.push(r1(x), r1(y));
     }
-    return d.el.setAttribute('d', strokePath(d.p));
+    Live.bpen(BV.b, d); return d.el.setAttribute('d', strokePath(d.p));
   }
   const [x, y] = toWorld(e);
   if (d.type === 'erase') return eraseAt(x, y);
   if (d.type === 'move') {
-    if (!d.moved) { if (Math.hypot(e.clientX - d.px, e.clientY - d.py) < 3) return; d.moved = true; boardSnap(); }
+    if (!d.moved) { if (Math.hypot(e.clientX - d.px, e.clientY - d.py) < 3) return; d.moved = true; dragStart(d, d.node); }
     d.it.x = r1(d.ix + x - d.sx); d.it.y = r1(d.iy + y - d.sy);
-    d.node.setAttribute('x', d.it.x); d.node.setAttribute('y', d.it.y); return boardSelUi();
+    d.node.setAttribute('x', d.it.x); d.node.setAttribute('y', d.it.y); Live.btick(BV.b, d.it); return boardSelUi();
   }
   if (d.type === 'resize') {
-    if (!d.moved) { d.moved = true; boardSnap(); }
+    if (!d.moved) { d.moved = true; dragStart(d, $(`#bitems [data-id="${d.it.id}"]`)); }
     const it = d.it, sc = Math.max(Math.abs(x - d.ax) / d.w, Math.abs(y - d.ay) / d.h0, 24 / c.k / Math.max(d.w, d.h0));
     it.w = r1(d.w * sc); it.h = r1(d.h0 * sc); it.x = r1(d.h.includes('w') ? d.ax - it.w : d.ax); it.y = r1(d.h.includes('n') ? d.ay - it.h : d.ay);
     const node = $(`#bitems [data-id="${it.id}"]`);
     if (node) for (const k of ['x', 'y']) node.setAttribute(k, it[k]);
     if (node) { node.setAttribute('width', it.w); node.setAttribute('height', it.h); }
-    boardSelUi();
+    Live.btick(BV.b, it); boardSelUi();
   }
 }
 function bUp(e) {
@@ -2332,13 +2425,19 @@ function bUp(e) {
   if (!d) return;
   if (d.type === 'pinch') { if (BV.pts.size === 0) BV.drag = null; return; }
   BV.drag = null; $('#board').classList.remove('panning');
+  if (d.dn) d.dn.classList.remove('drag');
   if (d.type === 'pen' && e.type !== 'pointercancel') {
-    d.el.remove(); boardSnap();
+    d.el.remove();
     const s = { c: BV.color, w: d.w, p: simplify(d.p, 0.7 / BV.cam.k) };
-    BV.b.strokes.push(s); $('#bstrokes').insertAdjacentHTML('beforeend', strokeSvg(s)); $('#b-empty').hidden = true; boardTouch();
-  } else if (d.type === 'pen') d.el.remove();
-  else if (d.type === 'erase') { if (d.changed) boardTouch(); }
-  else if ((d.type === 'move' || d.type === 'resize') && d.moved) { boardSelUi(); boardTouch(); }
+    if (READONLY) { Live.gop({ k: 'line', b: BV.b.id, ss: [s] }, { k: 'erase', b: BV.b.id, h: [shash(s)] }); return; }
+    boardSnap(); BV.b.strokes.push(s); $('#bstrokes').insertAdjacentHTML('beforeend', strokeSvg(s)); $('#b-empty').hidden = true; boardTouch();
+  } else if (d.type === 'pen') { d.el.remove(); Live.bpen(BV.b, null); }
+  else if (d.type === 'erase') { if (READONLY) { if (d.gone && d.gone.length) Live.undoable({ k: 'line', b: BV.b.id, ss: d.gone }); } else if (d.changed) boardTouch(); }
+  else if ((d.type === 'move' || d.type === 'resize') && d.moved) {
+    boardSelUi(); const it = d.it;
+    if (!READONLY) return boardTouch();
+    if (!Live.gop({ k: 'move', b: BV.b.id, it: { id: it.id, x: it.x, y: it.y, w: it.w, h: it.h } }, { k: 'move', b: BV.b.id, it: d.from })) { Object.assign(it, d.from); boardDraw(); }
+  }
 }
 const imgSize = src => new Promise((res, rej) => { const im = new Image(); im.onload = () => res({ w: im.naturalWidth || 400, h: im.naturalHeight || 300 }); im.onerror = () => rej(new Error('decode')); im.src = src; });
 async function boardPlace(imgId, at, n = 0) {
@@ -2348,7 +2447,7 @@ async function boardPlace(imgId, at, n = 0) {
   const w = r1(size.w * sc), h = r1(size.h * sc), [cx, cy] = at || [(r.width / 2 - c.x) / c.k, (r.height / 2 - c.y) / c.k];
   boardSnap();
   const it = { id: uid(), img: imgId, x: r1(cx - w / 2 + n * 28 / c.k), y: r1(cy - h / 2 + n * 28 / c.k), w, h };
-  BV.b.items.push(it); BV.sel = it.id; setTool('move'); boardDraw(); boardTouch();
+  BV.b.items.push(it); BV.sel = it.id; setTool('move'); boardDraw(); boardTouch(); Live.bthumb(imgId);
 }
 async function boardAddFiles(files, at) {
   if (READONLY || !$('#board')) return;
@@ -2385,24 +2484,55 @@ async function boardDelete() {
 function boardKey(e) {
   const mod = e.ctrlKey || e.metaKey;
   if (e.code === 'Space') { if (e.target.closest('button, a')) return false; e.preventDefault(); BV.space = true; const el = $('#board'); if (el) el.classList.add('space'); return true; }
-  if (READONLY) return false;
+  if (boardRO()) return false;
   if (mod && e.code === 'KeyZ') { e.preventDefault(); boardUndo(); return true; }
   if (mod || e.altKey) return false;
-  if ((e.key === 'Delete' || e.key === 'Backspace') && selItem()) { e.preventDefault(); ACT['b-remove'](); return true; }
+  if ((e.key === 'Delete' || e.key === 'Backspace') && selItem() && !READONLY) { e.preventDefault(); ACT['b-remove'](); return true; }
   const t = { KeyV: 'move', KeyM: 'pen', KeyE: 'erase' }[e.code]; if (t) { setTool(t); return true; }
   return false;
 }
-let refreshing = false;
-async function refreshViewer(manual) {
-  if (!ONLINE || OWNER || refreshing) return; refreshing = true;
-  const keep = cid(), before = SHARED_AT;
-  try { await loadViewer(); } catch (e) { refreshing = false; if (manual) toast(ghMessage(e), 5000); return; }
-  refreshing = false;
-  if (S.campaigns.some(c => c.id === keep)) S.settings.campaign = keep;
-  const th = lsGet('cj-theme'); if (th && THEMES.some(t => t.id === th)) S.settings.theme = th;
-  if (SHARED_AT !== before) { BV.stale = true; if (manual) toast('Загружена свежая версия'); }
-  else if (manual) toast('Изменений пока нет');
-  if (BV.stale && !LB && !BV.drag && !BV.rolling && !F && !$('.backdrop')) { BV.stale = false; applyTheme(); render(); }
+let refreshing = false, refreshNext = null, refreshedAt = 0, staleTimer = 0;
+/* Что в журнале изменилось, кроме рисунков и картинок на досках: по этому решаем, перерисовывать ли страницу целиком */
+const stateSig = () => JSON.stringify({ ...S, savedAt: 0, files: 0, settings: { ...S.settings, changedAt: 0, campaign: 0 }, boards: S.boards.map(b => ({ ...b, items: 0, strokes: 0, updatedAt: 0 })), characters: S.characters.map(c => ({ ...c, sheet: c.sheet ? 1 : 0, updatedAt: 0 })) });
+const sheetSig = () => JSON.stringify(S.characters.map(c => c.sheet || 0));
+async function refreshViewer(manual, sha) {
+  if (!ONLINE || OWNER) return;
+  if (refreshing) { if (sha) refreshNext = sha; if (manual) toast('Уже обновляю…'); return; }
+  refreshing = true;
+  const busy = on => $$('[data-act="b-refresh"]').forEach(b => b.classList.toggle('busy', on));
+  const keep = cid(), before = SHARED_AT, sig = stateSig(), ssig = sheetSig(); let err = null;
+  if (manual) busy(true);
+  try { await loadViewer(sha); } catch (e) { err = e; }
+  refreshing = false; refreshedAt = Date.now(); busy(false);
+  if (err) { if (manual) toast(ghMessage(err), 5000); }
+  else {
+    if (S.campaigns.some(c => c.id === keep)) S.settings.campaign = keep;
+    if (BV.b && !S.boards.includes(BV.b)) BV.b = S.boards.find(x => x.id === BV.b.id) || BV.b;   // журнал загружен заново: доска та же, объект новый — иначе игрок на время теряет право править
+    const th = lsGet('cj-theme'); if (th && THEMES.some(t => t.id === th)) S.settings.theme = th;
+    if (SHARED_AT !== before) {
+      Live.breplay();
+      if (stateSig() !== sig) BV.stale = 'full'; else if (!BV.stale) BV.stale = 'board';
+      if (sheetSig() !== ssig) BV.staleSheets = true;
+      if (manual) toast('Загружена свежая версия');
+    } else if (manual) toast(Live.wsOk ? 'Всё свежее: доска обновляется сама' : 'Изменений пока нет');
+    applyStale();
+  }
+  if (refreshNext) { const next = refreshNext; refreshNext = null; refreshViewer(false, next); }
+}
+/* Показывает загруженную свежую версию. Если зритель чем-то занят (двигает лист, печатает, открыл окно) — чуть позже. */
+function applyStale() {
+  clearTimeout(staleTimer); if (!BV.stale) return;
+  const act = document.activeElement, typing = !!act && /^(INPUT|TEXTAREA)$/.test(act.tagName) && act.id !== 'search-in';
+  const full = BV.stale === 'full';
+  if (LB || BV.drag || F || $('.backdrop') || (full && (BV.rolling || typing || SW.drag))) { staleTimer = setTimeout(applyStale, 1200); return; }
+  BV.stale = false;
+  if (full) { applyTheme(); render(); }
+  else if ($('#board')) {
+    const was = BV.b; BV.b = curBoard(); if (was && was.id !== BV.b.id) return renderView();
+    boardDraw(); boardChrome();
+    if (BV.staleSheets && !sheetTyping()) wins().forEach(w => winRefresh(w.id));
+  }
+  BV.staleSheets = false;
 }
 
 /* Кубики FATE: четыре кубика, на каждом по две грани «плюс», «минус» и пустых */
@@ -2486,23 +2616,48 @@ function playRoll(roll) {
 /* Общие броски. На сайте в интернете результат броска сразу видят все, у кого сайт открыт.
    Своего сервера у журнала нет, поэтому сообщение уходит сразу по двум открытым бесплатным каналам
    (ntfy.sh и общедоступный MQTT‑брокер) — достаточно, чтобы работал любой один. Канал назван по адресу сайта. */
+/* Отпечаток линии: по нему ведущий и зрители узнают одну и ту же линию, не пересылая её целиком */
+const SH = new WeakMap();
+function shash(st) { let h = SH.get(st); if (!h) { const j = st.c + '|' + st.w + '|' + st.p.join(','); h = fnv(j) + fnv('~' + j); SH.set(st, h); } return h; }
+/* Присланное по открытому каналу проверяем: в разметку должны попасть только числа и цвет */
+const fin = v => { v = +v; return Number.isFinite(v) ? Math.round(v * 10) / 10 : null; };
+function cleanStroke(o) {
+  if (!o || !Array.isArray(o.p) || o.p.length < 2 || o.p.length > 40000 || o.p.length % 2) return null;
+  const w = fin(o.w), p = o.p.map(fin); if (!w || w <= 0 || p.includes(null) || !/^#[0-9a-fA-F]{3,8}$/.test(o.c)) return null;
+  return { c: o.c, w, p };
+}
+function cleanItem(o) {
+  if (!o || typeof o.id !== 'string' || typeof o.img !== 'string' || o.id.length > 40 || o.img.length > 60) return null;
+  const x = fin(o.x), y = fin(o.y), w = fin(o.w), h = fin(o.h); if (x === null || y === null || !w || !h || w <= 0 || h <= 0) return null;
+  const it = { id: o.id, img: o.img, x, y, w, h }; if (o.lock) it.lock = true; return it;
+}
 const fnv = s => { let h = 0x811c9dc5; for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 0x01000193); } return (h >>> 0).toString(36); };
 const Live = {
   NTFY: 'https://ntfy.sh/', MQTT: ['wss://broker.emqx.io:8084/mqtt', 'wss://broker.hivemq.com:8884/mqtt'],
-  seen: new Set(), via: new Map(), queue: [], started: 0, esOk: false, wsOk: false, ws: null, pub: null, wsi: 0, off: 0, lastId: '', _room: '',
+  seen: new Set(), via: new Map(), queue: [], started: 0, esOk: false, wsOk: false, conn: [null, null], pub: null, off: 0, lastId: '', _room: '',
+  me: uid(), hostAt: 0, pingAt: 0, pend: [], acks: [], ops: new Set(), seq: {}, opN: 0, shq: new Map(), shqT: 0, shat: {}, shkeep: {}, shDirty: new Map(), shT: {}, penT: {}, warnAt: 0,
+  thumbs: new Set(), sk: new Map(), sent: new Set(), bat: {}, tat: {}, bkeep: {}, bdirty: new Set(), bask_: {}, lastSaved: null, _clock: 0, bLast: 0, bt: 0, tk: null, tkT: 0, tkLast: 0, pn: null, pnT: 0, pnLast: 0, hiAt: 0, helloT: 0,
   name() { return (lsGet('cj-name') || '').trim() || (OWNER ? 'Ведущий' : 'Игрок'); },
   setName(v) { lsSet('cj-name', String(v).trim().slice(0, 24) || null); },
   room() { if (!this._room) { const k = `${ONLINE.owner}/${ONLINE.repo}`.toLowerCase(); this._room = 'cjr-' + fnv(k) + fnv('rolls:' + k) + fnv(k + ':4df'); } return this._room; },
   online() { return this.esOk || this.wsOk; },
   start() {
     if (!ONLINE || this.started || SANDBOX) return;
-    this.started = Date.now(); this.sse(); this.mqtt(); setTimeout(() => this.paint(), 12500);
+    this.started = Date.now(); this.sse(); this.MQTT.forEach((u, i) => this.mqtt(i)); setTimeout(() => this.paint(), 12500);
+    if (OWNER) {
+      for (const b of S.boards) for (const st of b.strokes) this.sent.add(shash(st));   // эти линии уже сохранены, зрители получат их с журналом
+      setInterval(() => this.bmsg({ t: 'host' }), 8000);                                   // «ведущий на связи»: пока это слышно, игроки могут менять доску и листы
+      window.addEventListener('pagehide', () => this.bmsg({ t: 'bye' }));
+    } else {
+      setInterval(() => this.hostCheck(), 4000);
+      document.addEventListener('visibilitychange', () => { if (!document.hidden && HOSTED) { this.hostAt = Math.max(this.hostAt, Date.now() - 12000); this.bmsg({ t: 'ping' }); } });
+    }
   },
   paint() {
     const el = $('#dice-net'); if (!el) return;
     const on = this.online(), wait = !on && this.started && Date.now() - this.started < 12000, sec = OWNER && BV.secret;
     el.className = 'dice-net-st ' + (sec ? 'sec' : on ? 'on' : wait ? 'wait' : 'off');
-    el.textContent = sec ? 'Тайно: бросок увидите только вы' : on ? 'Броски видят все' : wait ? 'Подключаемся…' : 'Нет связи: бросок увидите только вы';
+    el.textContent = sec ? 'Тайно: бросок увидите только вы' : on ? (this.wsOk ? 'Броски видят все' : 'Броски видят все · доска с задержкой') : wait ? 'Подключаемся…' : 'Нет связи: бросок увидите только вы';
   },
   /* канал 1: ntfy.sh — поток событий, заодно отдаёт броски за последние часы */
   sse() {
@@ -2520,49 +2675,292 @@ const Live = {
     };
     es.onerror = () => { this.esOk = false; this.paint(); if (es.readyState === 2) setTimeout(() => this.sse(), 20000); };
   },
-  /* канал 2: MQTT поверх WebSocket — только самое нужное из протокола */
-  mqtt() {
+  /* канал 2: MQTT поверх WebSocket — только самое нужное из протокола. Подключаемся сразу к двум серверам:
+     если у кого-то из игроков один из них недоступен, все встретятся на втором. Повторы отсеиваются. */
+  mqtt(i) {
     if (!window.WebSocket || !window.TextEncoder) return;
-    const url = this.MQTT[this.wsi++ % this.MQTT.length], topic = 'cjr/' + this.room(), te = new TextEncoder(), td = new TextDecoder();
+    const url = this.MQTT[i], topic = 'cjr/' + this.room(), te = new TextEncoder(), td = new TextDecoder();
     const str = t => { const b = te.encode(t); return [b.length >> 8, b.length & 255, ...b]; };
-    const pkt = (type, body) => { const len = []; let n = body.length; do { let d = n % 128; n = Math.floor(n / 128); if (n) d |= 128; len.push(d); } while (n); return new Uint8Array([type, ...len, ...body]); };
-    let ws, buf = new Uint8Array(0), ping = 0, dead = false;
+    const pkt = (type, head, data) => {
+      const len = []; let n = head.length + (data ? data.length : 0); do { let d = n % 128; n = Math.floor(n / 128); if (n) d |= 128; len.push(d); } while (n);
+      const out = new Uint8Array(1 + len.length + head.length + (data ? data.length : 0)); out[0] = type; out.set(len, 1); out.set(head, 1 + len.length); if (data) out.set(data, 1 + len.length + head.length);
+      return out;
+    };
+    let ws, buf = new Uint8Array(0), ping = 0, dead = false, me = null;
     const close = () => {
       if (dead) return; dead = true; clearInterval(ping);
-      if (this.ws === ws) { this.ws = null; this.wsOk = false; this.pub = null; this.paint(); }
+      if (me && this.conn[i] === me) { this.conn[i] = null; this.wsState(); }
       try { ws.close(); } catch (e) {}
-      setTimeout(() => this.mqtt(), 15000);
+      setTimeout(() => this.mqtt(i), 15000);
     };
-    try { ws = new WebSocket(url, 'mqtt'); } catch (e) { setTimeout(() => this.mqtt(), 15000); return; }
-    ws.binaryType = 'arraybuffer'; this.ws = ws;
-    setTimeout(() => { if (!dead && !(this.wsOk && this.ws === ws)) close(); }, 12000);
+    try { ws = new WebSocket(url, 'mqtt'); } catch (e) { setTimeout(() => this.mqtt(i), 15000); return; }
+    ws.binaryType = 'arraybuffer';
+    setTimeout(() => { if (!dead && !me) close(); }, 12000);
     ws.onopen = () => ws.send(pkt(0x10, [...str('MQTT'), 4, 2, 0, 60, ...str('cj' + uid())]));
     ws.onclose = close; ws.onerror = close;
     ws.onmessage = e => {
       const add = new Uint8Array(e.data), all = new Uint8Array(buf.length + add.length); all.set(buf); all.set(add, buf.length); buf = all;
       for (;;) {
         if (buf.length < 2) return;
-        let len = 0, mul = 1, i = 1, b;
-        do { if (i >= buf.length) return; b = buf[i++]; len += (b & 127) * mul; mul *= 128; } while ((b & 128) && i < 5);
-        if (buf.length < i + len) return;
-        const head = buf[0], body = buf.slice(i, i + len); buf = buf.slice(i + len);
+        let len = 0, mul = 1, k = 1, b;
+        do { if (k >= buf.length) return; b = buf[k++]; len += (b & 127) * mul; mul *= 128; } while ((b & 128) && k < 5);
+        if (buf.length < k + len) return;
+        const head = buf[0], body = buf.slice(k, k + len); buf = buf.slice(k + len);
         const type = head >> 4;
-        if (type === 2) { if (body[1] !== 0) return close(); ws.send(pkt(0x82, [0, 1, ...str(topic), 0])); }
+        if (type === 2) { if (body[1] !== 0) return close(); ws.send(pkt(0x82, [0, 1, ...str(topic), 0, ...str(topic + '/b'), 0])); }
         else if (type === 9) {
-          this.wsOk = true; this.pub = text => ws.send(pkt(0x30, [...str(topic), ...te.encode(text)]));
-          ping = setInterval(() => { try { ws.send(new Uint8Array([0xC0, 0])); } catch (x) { close(); } }, 30000); this.paint();
+          if (me) continue;
+          me = { ws, send: (text, board) => ws.send(pkt(0x30, str(topic + (board ? '/b' : '')), te.encode(text))) };
+          this.conn[i] = me; ping = setInterval(() => { try { ws.send(new Uint8Array([0xC0, 0])); } catch (x) { close(); } }, 30000); this.wsState();
         } else if (type === 3) {
-          const from = 2 + (body[0] << 8 | body[1]) + ((head >> 1) & 3 ? 2 : 0);
-          try { this.receive(JSON.parse(td.decode(body.subarray(from))), 0, Date.now(), 'mqtt'); } catch (x) {}
+          const tl = body[0] << 8 | body[1], name = td.decode(body.subarray(2, 2 + tl)), from = 2 + tl + ((head >> 1) & 3 ? 2 : 0);
+          let msg; try { msg = JSON.parse(td.decode(body.subarray(from))); } catch (x) { continue; }
+          try { if (name === topic) this.receive(msg, 0, Date.now(), 'mqtt'); else if (name === topic + '/b') this.brecv(msg); } catch (x) { console.error(x); }
         }
       }
     };
+  },
+  wsState() {
+    const was = this.wsOk, live = this.conn.filter(Boolean);
+    this.wsOk = live.length > 0;
+    this.pub = this.wsOk ? (text, board) => { for (const c of live) try { if (!board || c.ws.bufferedAmount < 400000) c.send(text, board); } catch (e) {} } : null;
+    this.paint();
+    const more = live.length > this.hiAt; this.hiAt = live.length;
+    if (OWNER) { if (more) this.bmsg({ t: 'host' }); return; }
+    this.hostCheck();
+    if (!this.wsOk) return;
+    if (more) this.bmsg({ t: 'hi' });   // зритель просит у ведущего текущее состояние досок
+    if (!was && this.started && Date.now() - this.started > 20000 && Date.now() - refreshedAt > 15000) refreshViewer(false);   // связь вернулась после перерыва
+  },
+
+  /* ── Доска в прямом эфире ──
+     Ведущий рассылает по каналу MQTT то, что меняется на открытых досках; у зрителей это появляется сразу, без перезагрузки.
+     Сообщения: b — полное состояние доски (картинки и список линий по отпечаткам), i — картинка в движении, p — линия, которую ещё ведут,
+     s — линии по запросу, th — уменьшенная копия новой картинки, saved — журнал сохранён (зрители загружают свежую версию),
+     hi и need — просьбы зрителя. Скрытые доски не рассылаются. */
+  clock() { this._clock = Math.max(Date.now(), this._clock + 1); return this._clock; },
+  bmsg(m) { if (this.pub) this.pub(JSON.stringify({ ...m, v: 2, u: this.me, o: OWNER ? 1 : 0 }), true); },
+  canPub(b) { return !!this.pub && !!b && S.boards.includes(b) && (OWNER ? !b.secret : READONLY && HOSTED); },
+  pubBoard(b) { return OWNER && !!this.pub && !!b && !b.secret && S.boards.includes(b); },
+  bstate(b) {
+    if (!this.pubBoard(b)) return;
+    this.bdirty.add(b.id); clearTimeout(this.bt);
+    this.bt = setTimeout(() => { this.bLast = Date.now(); const ids = [...this.bdirty]; this.bdirty.clear(); for (const id of ids) this.bsend(S.boards.find(x => x.id === id), true); }, Math.max(0, 200 - (Date.now() - this.bLast)));
+  },
+  bsend(b, withNew) {
+    if (!this.pubBoard(b)) return;
+    clearTimeout(this.tkT); this.tkT = 0; this.tk = null; clearTimeout(this.pnT); this.pnT = 0; this.pn = null;
+    const sk = b.strokes.map(shash), add = [];
+    if (withNew) b.strokes.forEach((st, i) => { if (!this.sent.has(sk[i])) { this.sent.add(sk[i]); add.push(st); } });
+    this.bmsg({ t: 'b', b: b.id, c: b.campaignId, n: b.name, at: this.clock(), items: b.items.map(it => ({ id: it.id, img: it.img, x: it.x, y: it.y, w: it.w, h: it.h, lock: it.lock ? 1 : 0 })), sk, add, ack: this.acks.slice(-40) });
+  },
+  btick(b, it) {
+    if (!this.canPub(b)) return;
+    this.tk = { t: 'i', b: b.id, it: { id: it.id, x: it.x, y: it.y, w: it.w, h: it.h } };
+    if (!this.tkT) this.tkT = setTimeout(() => { this.tkT = 0; this.tkLast = Date.now(); if (this.tk) { this.bmsg({ ...this.tk, at: this.clock() }); this.tk = null; } }, Math.max(0, 90 - (Date.now() - this.tkLast)));
+  },
+  bpen(b, d) {
+    if (!this.canPub(b)) return;
+    if (!d) { clearTimeout(this.pnT); this.pnT = 0; this.pn = null; return this.bmsg({ t: 'p', b: b.id, at: this.clock(), p: [] }); }
+    this.pn = { b: b.id, d };
+    if (!this.pnT) this.pnT = setTimeout(() => {
+      this.pnT = 0; this.pnLast = Date.now(); const q = this.pn; this.pn = null; if (!q || BV.drag !== q.d) return;
+      this.bmsg({ t: 'p', b: q.b, at: this.clock(), c: BV.color, w: q.d.w, p: simplify(q.d.p, 1.2 / BV.cam.k) });
+    }, Math.max(0, 140 - (Date.now() - this.pnLast)));
+  },
+  async bthumb(id) {
+    if (!this.pubBoard(BV.b) || !IMG[id] || (S.files && S.files[id] && !S.files[id].priv)) return;
+    try {
+      const im = new Image(); im.crossOrigin = 'anonymous';
+      await new Promise((res, rej) => { im.onload = res; im.onerror = rej; im.src = IMG[id]; });
+      const sc = Math.min(1, 420 / Math.max(im.naturalWidth, im.naturalHeight)), c = document.createElement('canvas'), g = c.getContext('2d');
+      c.width = Math.max(1, Math.round(im.naturalWidth * sc)); c.height = Math.max(1, Math.round(im.naturalHeight * sc)); g.drawImage(im, 0, 0, c.width, c.height);
+      let d = c.toDataURL('image/webp', 0.55);
+      if (!d.startsWith('data:image/webp')) { g.fillStyle = '#1c1b26'; g.fillRect(0, 0, c.width, c.height); g.drawImage(im, 0, 0, c.width, c.height); d = c.toDataURL('image/jpeg', 0.55); }
+      if (d.length < 120000) this.bmsg({ t: 'th', img: id, d });
+    } catch (e) { /* без уменьшенной копии зритель увидит рамку, а картинку — после сохранения */ }
+  },
+  saved(info) {
+    if (!OWNER || !info) return; this.lastSaved = info; this.bmsg({ t: 'saved', sha: info.sha, at: info.at });
+    for (const [id, t] of this.shDirty) if (t <= info.at) this.shDirty.delete(id);
+  },
+  bhello() {
+    const go = () => {
+      this.helloT = 0; this.bmsg({ t: 'host' }); if (this.lastSaved) this.bmsg({ t: 'saved', ...this.lastSaved });
+      for (const b of S.boards) this.bsend(b, false);
+      for (const id of this.shDirty.keys()) this.shsend(id);   // листы, изменённые после последнего сохранения
+    };
+    if (document.hidden) { if (Date.now() - (this.helloAt || 0) > 1000) { this.helloAt = Date.now(); go(); } return; }
+    if (!this.helloT) this.helloT = setTimeout(go, 400);
+  },
+  bneed(p) {
+    const b = S.boards.find(x => x.id === p.b); if (!this.pubBoard(b) || !Array.isArray(p.h)) return;
+    const want = new Set(p.h); let add = [], size = 0;
+    for (const st of b.strokes) {
+      if (!want.has(shash(st))) continue;
+      add.push(st); size += st.p.length * 7 + 40;
+      if (size > 30000) { this.bmsg({ t: 's', b: b.id, add }); add = []; size = 0; }
+    }
+    if (add.length) this.bmsg({ t: 's', b: b.id, add });
+  },
+  brecv(p) {
+    if (!p || p.v !== 2 || typeof p.t !== 'string' || typeof p.u !== 'string' || !/^[a-z0-9]{1,40}$/.test(p.u) || p.u === this.me || !S) return;
+    if (OWNER) {
+      if (p.o) return;                                   // вторая вкладка самого ведущего
+      if (p.t === 'hi') this.bhello(); else if (p.t === 'ping') this.bmsg({ t: 'host' }); else if (p.t === 'need') this.bneed(p); else if (p.t === 'op') this.gin(p); else if (p.t === 'i' || p.t === 'p') this.tick(p);
+      return;
+    }
+    if (!READONLY) return;
+    if (p.t === 'i' || p.t === 'p') { if (p.o) this.hostSeen(); return this.tick(p); }   // движение и линии «в пути» — от кого угодно
+    if (!p.o) return;                                    // всё остальное — только от ведущего
+    if (p.t === 'bye') { this.hostAt = 0; return this.hostCheck(); }
+    this.hostSeen();
+    if (p.t === 'saved') { if (/^[0-9a-f]{40}$/.test(p.sha) && +p.at > (SHARED_AT || 0)) refreshViewer(false, p.sha); return; }
+    if (p.t === 'th') {
+      if (typeof p.img !== 'string' || typeof p.d !== 'string' || !/^data:image\/(webp|jpeg|png);base64,[A-Za-z0-9+/=]+$/.test(p.d) || p.d.length > 130000 || IMG[p.img]) return;
+      IMG[p.img] = p.d; this.thumbs.add(p.img); if (this.onBoard() && BV.b.items.some(it => it.img === p.img)) boardDraw(); return;
+    }
+    if (p.t === 'sh') return this.shrecv(p);
+    if (typeof p.b !== 'string') return;
+    if (p.t === 'b') return this.bapply(p);
+    if (p.t === 's') { this.learn(p.add); const k = this.bkeep[p.b]; if (k) this.bapply(k, true); }
+  },
+  /* Картинка, которую кто-то двигает, и линия, которую кто-то ведёт: показываем сразу, в журнал это ещё не попало */
+  tick(p) {
+    if (typeof p.b !== 'string') return;
+    const at = +p.at || 0, b = S.boards.find(x => x.id === p.b), key = p.u + p.b;
+    if (!b || (OWNER && b.secret) || (p.o && at < (this.bat[p.b] || 0)) || at <= (this.tat[key] || 0)) return;
+    this.tat[key] = at;
+    if (p.t === 'i' && p.it) {
+      const it = b.items.find(x => x.id === p.it.id), n = cleanItem({ ...p.it, img: '-' });
+      if (!it || !n || (it.lock && !p.o) || (BV.drag && BV.drag.it && BV.drag.it.id === it.id)) return;
+      it.x = n.x; it.y = n.y; it.w = n.w; it.h = n.h;
+      const node = this.onBoard(b) && [...$('#bitems').children].find(x => x.dataset.id === it.id);
+      if (node) { node.setAttribute('x', it.x); node.setAttribute('y', it.y); node.setAttribute('width', it.w); node.setAttribute('height', it.h); boardSelUi(); }
+    } else if (p.t === 'p' && this.onBoard(b)) {
+      const id = 'bpen-' + p.u, st = Array.isArray(p.p) && p.p.length >= 2 && cleanStroke(p); let el = document.getElementById(id);
+      clearTimeout(this.penT[p.u]);
+      if (!st) { if (el) el.remove(); return; }
+      if (!el) { el = document.createElementNS('http://www.w3.org/2000/svg', 'path'); el.id = id; el.setAttribute('class', 'b-pen-live'); }
+      el.setAttribute('d', strokePath(st.p)); el.setAttribute('stroke', st.c); el.setAttribute('stroke-width', st.w); $('#bstrokes').append(el); $('#b-empty').hidden = true;
+      this.penT[p.u] = setTimeout(() => { const x = document.getElementById(id); if (x) x.remove(); }, 5000);
+    }
+  },
+  hostSeen() { this.hostAt = Date.now(); this.hostCheck(); },
+  hostCheck() {
+    const quiet = Date.now() - this.hostAt;
+    if (this.pub && this.hostAt && quiet > 9000 && Date.now() - this.pingAt > 5000) { this.pingAt = Date.now(); this.bmsg({ t: 'ping' }); }   // давно не слышно ведущего — спрашиваем, на связи ли он
+    const on = !!this.pub && quiet < 22000; if (on === HOSTED) return;
+    HOSTED = on; if (!on) { this.pend = []; BV.gundo = []; }
+    hostUi();
+  },
+  /* Игрок: сделать действие у себя сразу и отправить ведущему. inv — обратное действие, для кнопки «Отменить». */
+  gop(op, inv) {
+    const b = S.boards.find(x => x.id === op.b);
+    if (!READONLY || !HOSTED || !this.pub || !b) { toast('Нет связи с ведущим — изменение не сохранится'); return false; }
+    op = { ...op, id: uid(), n: ++this.opN, t0: Date.now() };
+    applyOp(b, op); this.pend.push(op); this.bmsg({ t: 'op', ...op });
+    if (this.onBoard(b)) boardDraw();
+    if (inv) this.undoable(inv);
+    return true;
+  },
+  undoable(inv) { BV.gundo.push(inv); if (BV.gundo.length > 40) BV.gundo.shift(); },
+  acked(list) { const a = new Set(Array.isArray(list) ? list : []), now = Date.now(); this.pend = this.pend.filter(o => !a.has(o.id) && now - o.t0 < 8000); },
+  /* Ведущий: действие игрока. Каждое приходит по двум серверам, поэтому повторы отсеиваем, а порядок восстанавливаем по номерам. */
+  gin(p) {
+    if (typeof p.id !== 'string' || !p.id || p.id.length > 40 || this.ops.has(p.id)) return;
+    this.ops.add(p.id); if (this.ops.size > 800) this.ops = new Set([...this.ops].slice(-400));
+    const n = +p.n, q = this.seq[p.u] || (this.seq[p.u] = { n: 0, buf: new Map(), t: 0 });
+    if (!(n > 0) || !q.n || n <= q.n) { if (n > q.n) q.n = n; return this.gdo(p); }
+    q.buf.set(n, p);
+    const drain = force => {
+      for (;;) {
+        let next = q.buf.get(q.n + 1);
+        if (!next && force && q.buf.size) { const k = Math.min(...q.buf.keys()); next = q.buf.get(k); q.n = k - 1; }
+        if (!next) break;
+        q.n++; q.buf.delete(q.n); this.gdo(next);
+      }
+      clearTimeout(q.t); q.t = q.buf.size ? setTimeout(() => drain(true), 1200) : 0;
+    };
+    drain(false);
+  },
+  gdo(p) {
+    this.acks.push(p.id); if (this.acks.length > 60) this.acks.shift();
+    if (p.k === 'shf' || p.k === 'sheet') return this.shin(p);
+    const b = S.boards.find(x => x.id === p.b); if (!this.pubBoard(b)) return;
+    const cur = this.onBoard(b) && BV.b === b; if (cur) boardSnap();   // «Отменить» у ведущего отменяет и действие игрока
+    const tell = () => document.hidden ? this.bsend(b, true) : this.bstate(b);
+    if (!applyOp(b, p)) { if (cur) BV.undo.pop(); return tell(); }
+    b.updatedAt = Date.now(); save(5000); if (cur) boardDraw(); tell();
+  },
+  /* ── Листы персонажей в прямом эфире ── */
+  sheet(c, patch) {
+    if (OWNER) {
+      if (!this.pub || !pubSheet(c)) return;
+      this.shDirty.set(c.id, Date.now());
+      if (!this.shT[c.id]) this.shT[c.id] = setTimeout(() => { this.shT[c.id] = 0; this.shsend(c.id); }, 250);
+      return;
+    }
+    if (!READONLY || !c.sheet) return;
+    if (!HOSTED || !this.pub) { if (Date.now() - this.warnAt > 8000) { this.warnAt = Date.now(); toast('Нет связи с ведущим — изменения листа не сохранятся', 4000); } return; }
+    if (patch) this.shq.set([c.id, patch.bi, patch.ri, patch.f, patch.i].join('|'), { k: 'shf', ch: c.id, ...patch });
+    else { for (const k of [...this.shq.keys()]) if (k.startsWith(c.id + '|')) this.shq.delete(k); this.shq.set(c.id + '|*', { k: 'sheet', ch: c.id, blocks: clone(c.sheet.blocks) }); }
+    if (!this.shqT) this.shqT = setTimeout(() => {
+      this.shqT = 0; const list = [...this.shq.values()]; this.shq.clear();
+      for (const o of list) { o.id = uid(); o.n = ++this.opN; o.t0 = Date.now(); this.pend.push(o); this.bmsg({ t: 'op', ...o }); }
+    }, 300);
+  },
+  shsend(id) { const c = S.characters.find(x => x.id === id); if (this.pub && pubSheet(c)) this.bmsg({ t: 'sh', ch: c.id, at: this.clock(), blocks: c.sheet.blocks, ack: this.acks.slice(-40) }); },
+  shin(p) {
+    const c = S.characters.find(x => x.id === p.ch); if (!pubSheet(c)) return;
+    if (shApply(c, p)) { c.updatedAt = Date.now(); save(5000); shShow(c); }
+    this.shDirty.set(c.id, Date.now()); this.shsend(c.id);
+  },
+  shrecv(p, quiet) {
+    const c = S.characters.find(x => x.id === p.ch), bl = cleanBlocks(p.blocks), at = +p.at || 0; if (!c || !bl) return;
+    if (!quiet) { if (at <= (this.shat[p.ch] || 0)) return; this.shat[p.ch] = at; this.shkeep[p.ch] = p; this.acked(p.ack); }
+    c.sheet = { blocks: bl };
+    for (const o of [...this.pend, ...this.shq.values()]) if (o.ch === c.id) shApply(c, o);   // свои ещё не подтверждённые правки остаются сверху
+    if (!quiet) shShow(c);
+  },
+  onBoard(b) { return !!$('#board') && !!BV.b && (!b || BV.b.id === b.id); },
+  learn(list) { if (Array.isArray(list)) for (const raw of list.slice(0, 5000)) { const st = cleanStroke(raw); if (st) this.sk.set(shash(st), st); } },
+  /* Зритель: применить присланное состояние доски. quiet — после загрузки свежего журнала, без перерисовки. */
+  bapply(p, again, quiet) {
+    if (!Array.isArray(p.items) || !Array.isArray(p.sk) || p.items.length > 2000 || p.sk.length > 20000) return;
+    const at = +p.at || 0;
+    if (!again && at <= (this.bat[p.b] || 0)) return;
+    this.bat[p.b] = Math.max(at, this.bat[p.b] || 0); this.bkeep[p.b] = p; this.learn(p.add);
+    let b = S.boards.find(x => x.id === p.b), fresh = false;
+    if (!b) {
+      if (quiet || !S.campaigns.some(c => c.id === p.c)) return;
+      b = { id: p.b, campaignId: p.c, name: String(p.n || 'Доска').slice(0, 60), items: [], strokes: [], createdAt: Date.now(), updatedAt: Date.now() }; S.boards.push(b); fresh = true;
+    }
+    for (const st of b.strokes) this.sk.set(shash(st), st);
+    const miss = [], strokes = [], empty = !b.items.length && !b.strokes.length;
+    for (const h of p.sk) { const st = this.sk.get(h); if (st) strokes.push(st); else miss.push(h); }
+    b.items = p.items.map(cleanItem).filter(Boolean); b.strokes = strokes;
+    this.acked(p.ack); for (const o of this.pend) if (o.b === b.id) applyOp(b, o);   // свои ещё не подтверждённые действия остаются сверху
+    const d = BV.drag; if (d && d.it && d.moved && BV.b && BV.b.id === b.id) { const it = b.items.find(x => x.id === d.it.id); if (it) { it.x = d.it.x; it.y = d.it.y; it.w = d.it.w; it.h = d.it.h; d.it = it; } }
+    if (miss.length && !this.bask_[p.b]) this.bask_[p.b] = setTimeout(() => { this.bask_[p.b] = 0; this.bmsg({ t: 'need', b: p.b, h: miss.slice(0, 300) }); }, 250);
+    if (quiet || !$('#board')) return;
+    if (fresh && BV.b && !S.boards.includes(BV.b)) { if (curBoard() === b && !BV.rolling && !BV.drag) renderView(); return; }   // у зрителя не было ни одной доски — показываем появившуюся
+    if (BV.b !== b) return;
+    boardDraw(); if (empty && (b.items.length || b.strokes.length) && !BV.drag) boardFit();
+  },
+  /* После загрузки свежего журнала: то, что пришло по прямой связи позже сохранения, остаётся в силе */
+  breplay() {
+    for (const [id, p] of Object.entries(this.bkeep)) { if ((+p.at || 0) > (SHARED_AT || 0)) this.bapply(p, true, true); else delete this.bkeep[id]; }
+    for (const [id, p] of Object.entries(this.shkeep)) { if ((+p.at || 0) > (SHARED_AT || 0)) this.shrecv(p, true); else delete this.shkeep[id]; }
+    this.acked();
+    for (const o of this.pend) { const b = o.b && S.boards.find(x => x.id === o.b); if (b) applyOp(b, o); }
+    for (const o of [...this.pend, ...this.shq.values()]) { const c = o.ch && S.characters.find(x => x.id === o.ch); if (c && c.sheet) shApply(c, o); }
   },
   send(r) {
     this.seen.add(r.id); this.post(JSON.stringify({ v: 1, id: r.id, n: r.who, l: r.label, f: r.vals, m: r.mod }), true, true);
   },
   post(text, mqtt, ntfy) {
-    if (mqtt && this.pub) try { this.pub(text); } catch (e) {}
+    if (mqtt && this.pub) try { this.pub(text, false); } catch (e) {}
     if (ntfy) try { fetch(this.NTFY + this.room(), { method: 'POST', body: text }).catch(() => {}); } catch (e) {}
   },
   receive(p, age, at, via) {
@@ -2832,21 +3230,21 @@ function blockHtml(b, bi, edit, ro) {
   return `<div class="sh-block" data-t="${b.t}">${head}${body}${!ro && b.t !== 'text' ? `<button class="textlink sh-add" data-act="sh-add-row" ${at}>+ строка</button>` : ''}</div>`;
 }
 function sheetBody(c, edit) {
-  const sh = c.sheet, ro = READONLY;
-  if (!sh) return ro ? `<p class="sh-none">Листа этого персонажа здесь нет.</p>${c.role ? `<p class="sh-none">${esc(c.role)}</p>` : ''}`
+  const sh = c.sheet, ro = sheetRO();
+  if (!sh) return READONLY ? `<p class="sh-none">Листа этого персонажа здесь нет.</p>${c.role ? `<p class="sh-none">${esc(c.role)}</p>` : ''}`
     : `<p class="sh-none">У этого персонажа ещё нет листа. Выберите заготовку — потом в ней можно изменить всё: названия, разделы, строки, клетки.</p><div class="sh-tpls">${Object.entries(SHEETS).map(([k, t]) => `<button class="sh-tpl" data-act="sh-tpl" data-v="${k}"><b>${t.name}</b><span>${t.hint}</span></button>`).join('')}</div>`;
   const blocks = sh.blocks.map((b, bi) => blockHtml(b, bi, edit, ro)).join('');
-  return (!ro && sh.secret ? `<button class="sh-secret" data-act="sh-secret" title="Нажмите, чтобы показать лист другим">${ic('lock')}Этот лист видите только вы</button>` : '')
+  return (!READONLY && sh.secret ? `<button class="sh-secret" data-act="sh-secret" title="Нажмите, чтобы показать лист другим">${ic('lock')}Этот лист видите только вы</button>` : '')
     + (blocks || `<p class="sh-none">${ro ? 'Лист пока пустой.' : 'Лист пустой. Нажмите на карандаш вверху и добавьте разделы.'}</p>`)
     + (edit ? `<div class="sh-addblock"><span>Добавить раздел:</span>${Object.entries(SH_TYPES).map(([k, n]) => `<button class="sh-chip" data-act="sh-add-block" data-v="${k}">${n}</button>`).join('')}</div>` : '');
 }
 function winHtml(w, i) {
   const c = shChar(w.id); if (!c) return '';
-  const ro = READONLY, edit = !ro && !!w.edit && !!c.sheet, src = c.portrait && IMG[c.portrait];
+  const ro = sheetRO(), edit = !ro && !!w.edit && !!c.sheet, src = c.portrait && IMG[c.portrait];
   const sub = c.kind === 'pc' ? (c.player ? 'Игрок: ' + c.player : 'Персонаж игрока') : (c.role || 'НИП');
-  return `<section class="sh-win ${w.min ? 'min' : ''} ${edit ? 'editing' : ''}" data-id="${esc(c.id)}" style="left:${w.x}px;top:${w.y}px;width:${w.w}px;${w.min ? '' : `height:${w.h}px;`}z-index:${6 + i}" aria-label="Лист: ${esc(c.name)}">
+  return `<section class="sh-win ${w.min ? 'min' : ''} ${edit ? 'editing' : ''}" data-id="${esc(c.id)}" data-sig="${esc(shSig(c))}" style="left:${w.x}px;top:${w.y}px;width:${w.w}px;${w.min ? '' : `height:${w.h}px;`}z-index:${6 + i}" aria-label="Лист: ${esc(c.name)}">
     <header class="sh-head">${src ? `<img class="sh-av" src="${esc(src)}" alt="">` : `<span class="sh-av">${esc(initials(c.name))}</span>`}<div class="sh-ttl"><b>${esc(c.name)}</b><span>${esc(sub)}</span></div>
-      ${!ro && c.sheet ? `<button class="b-btn sm ${edit ? 'on' : ''}" data-act="sh-edit" title="${edit ? 'Закончить настройку' : 'Настроить лист: разделы, названия, строки'}" aria-label="Настроить лист">${ic('edit')}</button><button class="b-btn sm" data-act="sh-menu" title="Ещё" aria-label="Ещё">${ic('dots')}</button>` : ''}
+      ${!ro && c.sheet ? `<button class="b-btn sm ${edit ? 'on' : ''}" data-act="sh-edit" title="${edit ? 'Закончить настройку' : 'Настроить лист: разделы, названия, строки'}" aria-label="Настроить лист">${ic('edit')}</button>${READONLY ? '' : `<button class="b-btn sm" data-act="sh-menu" title="Ещё" aria-label="Ещё">${ic('dots')}</button>`}` : ''}
       <button class="b-btn sm" data-act="sh-min" title="${w.min ? 'Развернуть' : 'Свернуть в полоску'}" aria-label="${w.min ? 'Развернуть' : 'Свернуть'}">${ic(w.min ? 'down' : 'minus')}</button><button class="b-btn sm" data-act="sh-close" title="Закрыть лист" aria-label="Закрыть лист">${ic('x')}</button>
     </header><div class="sh-body">${sheetBody(c, edit)}</div></section>`;
 }
@@ -2894,14 +3292,85 @@ function shCtx(el) {
   const b = c.sheet && el.dataset.b != null ? c.sheet.blocks[+el.dataset.b] : null, ri = el.dataset.r != null ? +el.dataset.r : -1;
   return { c, w: wins().find(x => x.id === c.id), b, bi: +el.dataset.b, ri, row: b && b.rows && ri >= 0 ? b.rows[ri] : null };
 }
-function shTouch(c, redraw, focus) { c.updatedAt = Date.now(); save(5000); if (redraw) winRefresh(c.id, focus); }
+function shTouch(c, redraw, focus, patch) { c.updatedAt = Date.now(); save(5000); if (redraw) winRefresh(c.id, focus); Live.sheet(c, patch); }
+/* Строение листа: какие разделы и сколько в них строк и клеток. Если оно не менялось, чужие правки подставляются в открытый лист на месте. */
+const shSig = c => c.sheet ? c.sheet.blocks.map(b => b.t + ':' + (b.rows || []).map(r => (r.boxes ? r.boxes.length : '')).join(',')).join('|') : '';
+const pubSheet = c => !!c && !c.secret && !!c.sheet && !c.sheet.secret;
+const cutStr = (v, n) => String(v == null ? '' : v).slice(0, n);
+function cleanBlocks(list) {
+  if (!Array.isArray(list) || list.length > 60) return null;
+  const out = [];
+  for (const b of list) {
+    if (!b || !SH_TYPES[b.t]) return null;
+    const n = { t: b.t, title: cutStr(b.title, 200) };
+    if (b.t === 'text') n.text = cutStr(b.text, 20000);
+    else {
+      if (!Array.isArray(b.rows || []) || (b.rows || []).length > 200) return null;
+      n.rows = (b.rows || []).map(r => {
+        r = r || {}; const row = { k: cutStr(r.k, 400) };
+        if (b.t === 'list') row.v = cutStr(r.v, 5000);
+        else if (b.t === 'track') row.boxes = (Array.isArray(r.boxes) ? r.boxes : []).slice(0, 12).map(v => v ? 1 : 0);
+        else row.n = Math.max(-9999, Math.min(9999, parseInt(r.n, 10) || 0));
+        return row;
+      });
+      if (b.numbered) n.numbered = true;
+    }
+    out.push(n);
+  }
+  return out;
+}
+/* Одно поле листа: {bi, bt, ri, f, val, i} */
+function shSet(c, o) {
+  const b = c.sheet && c.sheet.blocks[o.bi]; if (!b || b.t !== o.bt) return false;
+  if (o.f === 'title') { b.title = cutStr(o.val, 200); return true; }
+  if (o.f === 'text' && b.t === 'text') { b.text = cutStr(o.val, 20000); return true; }
+  const row = b.rows && b.rows[o.ri]; if (!row) return false;
+  if (o.f === 'k') row.k = cutStr(o.val, 400);
+  else if (o.f === 'v' && b.t === 'list') row.v = cutStr(o.val, 5000);
+  else if (o.f === 'n' && (b.t === 'rated' || b.t === 'counter')) row.n = Math.max(-9999, Math.min(9999, parseInt(o.val, 10) || 0));
+  else if (o.f === 'box' && Array.isArray(row.boxes) && o.i >= 0 && o.i < row.boxes.length) row.boxes[o.i] = o.val ? 1 : 0;
+  else return false;
+  return true;
+}
+function shApply(c, o) { if (o.k === 'shf') return shSet(c, o); if (o.k === 'sheet') { const bl = cleanBlocks(o.blocks); if (bl && c.sheet) { c.sheet.blocks = bl; return true; } } return false; }
+/* Показать изменившийся лист в открытом окне. Если в нём сейчас печатают — меняем остальные поля на месте, курсор не трогаем. */
+function shShow(c) {
+  const el = $$('.sh-win').find(x => x.dataset.id === c.id); if (!el) return;
+  const act = document.activeElement, inside = !!act && el.contains(act) && !!act.dataset.sf;
+  if (!inside) return winRefresh(c.id);
+  el.dataset.stale = '1';
+  if (!c.sheet || el.dataset.sig !== shSig(c)) {       // изменилось строение листа: перерисовываем и возвращаем курсор на место
+    if (shComposing || !c.sheet) return;                // идёт набор с экранной клавиатуры — обновим, когда поле отпустят
+    const d = act.dataset, a = act.selectionStart, z = act.selectionEnd;
+    winRefresh(c.id, `[data-sf="${d.sf}"][data-b="${d.b}"]` + (d.r != null ? `[data-r="${d.r}"]` : ''));
+    const n = document.activeElement; if (n && n.dataset && n.dataset.sf === d.sf && a != null) try { n.setSelectionRange(a, z); } catch (e) { /* у числовых полей курсора нет */ }
+    return;
+  }
+  for (const n of $$('[data-sf]', el)) {
+    if (n === act) continue;
+    const b = c.sheet.blocks[+n.dataset.b], f = n.dataset.sf, r = b && b.rows && n.dataset.r != null ? b.rows[+n.dataset.r] : null;
+    const v = !b ? undefined : f === 'title' ? b.title : f === 'text' ? b.text : r ? r[f] : undefined;
+    if (v !== undefined && n.value !== String(v == null ? '' : v)) { n.value = v == null ? '' : v; if (n.tagName === 'TEXTAREA') shGrow(n); }
+  }
+  for (const n of $$('.sh-box[data-i]', el)) {
+    const b = c.sheet.blocks[+n.dataset.b], r = b && b.rows && b.rows[+n.dataset.r], on = !!(r && r.boxes && r.boxes[+n.dataset.i]);
+    n.classList.toggle('on', on); n.setAttribute('aria-pressed', on);
+  }
+}
+let shComposing = false;
+document.addEventListener('compositionstart', () => { shComposing = true; });
+document.addEventListener('compositionend', () => { shComposing = false; });
+document.addEventListener('focusout', e => {
+  const win = e.target.closest && e.target.closest('.sh-win'); if (!win || !win.dataset.stale) return;
+  setTimeout(() => { const a = document.activeElement; if (win.isConnected && !(a && win.contains(a) && a.dataset.sf)) winRefresh(win.dataset.id); }, 0);
+});
 document.addEventListener('input', e => {
-  const t = e.target; if (!t.dataset || !t.dataset.sf || READONLY) return;
+  const t = e.target; if (!t.dataset || !t.dataset.sf || sheetRO()) return;
   const x = shCtx(t), f = t.dataset.sf; if (!x || !x.b) return;
   if (f === 'title') x.b.title = t.value; else if (f === 'text') x.b.text = t.value;
   else if (x.row) x.row[f] = f === 'n' ? (parseInt(t.value, 10) || 0) : t.value;
   if (t.tagName === 'TEXTAREA') shGrow(t);
-  shTouch(x.c);
+  shTouch(x.c, false, null, { bi: x.bi, bt: x.b.t, ri: x.ri, f, val: f === 'title' ? x.b.title : f === 'text' ? x.b.text : x.row ? x.row[f] : '' });
 });
 Object.assign(ACT, {
   'rail-toggle': () => { SW.hide = !SW.hide; railRender(); },
@@ -2938,9 +3407,9 @@ Object.assign(ACT, {
   'sh-del-block': async el => { const x = shCtx(el); if (!x || !x.b) return; if (await confirmDialog(`Удалить раздел «${esc(x.b.title || SH_TYPES[x.b.t])}» со всем, что в нём записано?`)) { x.c.sheet.blocks.splice(x.c.sheet.blocks.indexOf(x.b), 1); shTouch(x.c, true); } },
   'sh-move-block': el => { const x = shCtx(el); if (!x || !x.b) return; const a = x.c.sheet.blocks, j = x.bi + +el.dataset.v; if (j < 0 || j >= a.length) return; [a[x.bi], a[j]] = [a[j], a[x.bi]]; shTouch(x.c, true); },
   'sh-numbered': el => { const x = shCtx(el); if (!x || !x.b) return; x.b.numbered = !x.b.numbered; shTouch(x.c, true); },
-  'sh-box': el => { const x = shCtx(el); if (!x || !x.row) return; const i = +el.dataset.i; x.row.boxes[i] = x.row.boxes[i] ? 0 : 1; el.classList.toggle('on', !!x.row.boxes[i]); el.setAttribute('aria-pressed', !!x.row.boxes[i]); shTouch(x.c); },
+  'sh-box': el => { const x = shCtx(el); if (!x || !x.row) return; const i = +el.dataset.i; x.row.boxes[i] = x.row.boxes[i] ? 0 : 1; el.classList.toggle('on', !!x.row.boxes[i]); el.setAttribute('aria-pressed', !!x.row.boxes[i]); shTouch(x.c, false, null, { bi: x.bi, bt: x.b.t, ri: x.ri, f: 'box', i, val: x.row.boxes[i] }); },
   'sh-box-n': el => { const x = shCtx(el); if (!x || !x.row) return; const bx = x.row.boxes = x.row.boxes || []; if (+el.dataset.v > 0) { if (bx.length < 12) bx.push(0); } else bx.pop(); shTouch(x.c, true); },
-  'sh-step': el => { const x = shCtx(el); if (!x || !x.row) return; x.row.n = (+x.row.n || 0) + +el.dataset.v; const i = $(`.sh-n[data-b="${x.bi}"][data-r="${x.ri}"]`, el.closest('.sh-win')); if (i) i.value = x.row.n; shTouch(x.c); },
+  'sh-step': el => { const x = shCtx(el); if (!x || !x.row) return; x.row.n = (+x.row.n || 0) + +el.dataset.v; const i = $(`.sh-n[data-b="${x.bi}"][data-r="${x.ri}"]`, el.closest('.sh-win')); if (i) i.value = x.row.n; shTouch(x.c, false, null, { bi: x.bi, bt: x.b.t, ri: x.ri, f: 'n', val: x.row.n }); },
   'sh-roll': el => { const x = shCtx(el); if (!x || !x.row || BV.rolling) return; BV.mod = +x.row.n || 0; rollDice(x.c.name + (x.row.k ? ' · ' + x.row.k : '')); },
   'sh-cast-menu': el => {
     const all = campChars(), on = new Set(castOf(BV.b).map(c => c.id));
@@ -2961,7 +3430,7 @@ document.addEventListener('click', e => {
   const a = e.target.closest('[data-nav]');
   if (a) { e.preventDefault(); if (F) return; $('#search-in').value = ''; go(a.dataset.nav); return; }
   const el = e.target.closest('[data-act]');
-  if (el) { e.preventDefault(); const fn = ACT[el.dataset.act]; if (fn && !(READONLY && EDIT_ACTS.has(el.dataset.act))) { const keep = el.dataset.act.endsWith('-menu'); if (!keep && el.closest('.menu')) closeMenu(); fn(el, e); } return; }
+  if (el) { e.preventDefault(); const fn = ACT[el.dataset.act]; if (fn && !(READONLY && EDIT_ACTS.has(el.dataset.act) && !(HOSTED && GUEST_ACTS.has(el.dataset.act)))) { const keep = el.dataset.act.endsWith('-menu'); if (!keep && el.closest('.menu')) closeMenu(); fn(el, e); } return; }
   if (e.target.id === 'lightbox') closeLightbox();
 });
 document.addEventListener('input', e => {
@@ -3108,11 +3577,15 @@ async function boot() {
       <div id="notice"></div>
       <div class="scroll" id="scroll"><div class="view" id="view"></div></div>
     </div>`;
-  route = parsePath(location.hash);
+  route = parsePath(location.hash); refreshedAt = Date.now();
   render(true);
   if (bootNote) toast(bootNote, 6000);
   if (ONLINE) Live.start();
-  if (ONLINE && !OWNER) setInterval(() => { if (route.view === 'board' && !document.hidden) refreshViewer(false); }, 120000);   // зрителю доска сама подтягивает свежую версию
+  if (ONLINE && !OWNER) {   // запасной путь на случай, если мгновенная связь не работает: зритель сам изредка проверяет, нет ли нового
+    const due = () => Date.now() - refreshedAt > (Live.wsOk ? 300000 : 90000);
+    setInterval(() => { if (!document.hidden && due()) refreshViewer(false); }, 30000);
+    document.addEventListener('visibilitychange', () => { if (!document.hidden && Date.now() - refreshedAt > 30000) refreshViewer(false); });
+  }
 }
 boot();
 })();
