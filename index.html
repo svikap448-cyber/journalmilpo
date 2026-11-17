@@ -1011,6 +1011,57 @@ html.hack-tear { filter: url(#hack-tear); }
 .hack-mx-g b.hit { background: #fcee0a; color: #05070a; }
 @media (max-width: 760px) { .hack-btn span { display: none; } [data-theme="cyber"] .hack-btn { padding-left: 12px; padding-right: 13px; } .hack-hud { bottom: 8px; font-size: 12px; } .hack-top b { margin-right: 4px; } }
 
+/* ═════════ Праздник на «+ + + +» (тема «Киберпанк»): слой на пять секунд, нажатий не перехватывает ═════════ */
+.party { position: fixed; inset: 0; z-index: 390; pointer-events: none; overflow: hidden; --s: min(90vh, 108vw, 900px); animation: party-in .3s ease-out both; }
+.party::before { content: ""; position: absolute; inset: 0; background: radial-gradient(ellipse 78% 88% at 50% 64%, rgba(3,4,8,.95) 0, rgba(3,4,8,.88) 46%, rgba(3,4,8,.6) 100%); }
+.party.out { animation: party-out .7s ease-in both; }
+.party-cv { position: absolute; inset: 0; width: 100%; height: 100%; }
+.party-girl { position: absolute; left: calc(50% - var(--s) / 2); bottom: calc(var(--s) * -.1); width: var(--s); height: var(--s); transform-origin: 50.6% 34%; animation: party-girl 4.7s cubic-bezier(.3,.7,.3,1) both; will-change: transform, opacity; }
+.party-girl::before { content: ""; position: absolute; inset: 0; background: radial-gradient(ellipse 46% 54% at 50% 52%, #030408 0, #030408 72%, rgba(3,4,8,0) 100%); }      /* глухая подложка: сквозь тёмные волосы и куртку не просвечивают кубики */
+.party-girl > canvas, .party-girl > img { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+.party-girl > img.raw { -webkit-mask-image: radial-gradient(closest-side, #000 62%, transparent 100%); mask-image: radial-gradient(closest-side, #000 62%, transparent 100%); }
+.party-kiss { position: absolute; left: 50.6%; top: 34%; width: 17%; opacity: 0; transform: translate(-50%, -50%) scale(.15); filter: drop-shadow(0 0 10px rgba(255,46,136,.9)) drop-shadow(0 0 26px rgba(255,46,136,.55)); animation: party-kiss 4.7s cubic-bezier(.3,.7,.3,1) both; }
+.party-kiss svg { display: block; width: 100%; height: auto; }
+.party-kiss::after { content: ""; position: absolute; left: 50%; top: 50%; width: 120%; aspect-ratio: 1; margin: -60% 0 0 -60%; border: 2px solid #ff2e88; border-radius: 50%; opacity: 0; animation: party-ring .6s ease-out 2.95s both; }
+.party-h { position: absolute; left: 50.6%; top: 34%; font: normal 700 calc(var(--s) * .034)/1 Arial, sans-serif; color: #ff2e88; text-shadow: 0 0 10px rgba(255,46,136,.9); opacity: 0; transform: translate(-50%, -50%) scale(.3); animation: party-heart 1.7s ease-out both; }
+.party-h.c { color: #5ef6ff; text-shadow: 0 0 10px rgba(94,246,255,.9); }
+.party-plus { position: absolute; left: 0; right: 0; top: 3.2vh; display: flex; justify-content: center; gap: .42em; font: 700 clamp(34px, 7.4vh, 76px)/1 "Tektur", Consolas, "Courier New", monospace; color: #fcee0a; text-shadow: 0 0 18px rgba(252,238,10,.75), 3px 0 0 rgba(255,46,136,.75), -3px 0 0 rgba(94,246,255,.75); }
+.party-plus b { animation: party-plus .5s cubic-bezier(.2,1.6,.4,1) both; }
+.party-plus b:nth-child(2) { animation-delay: .12s; } .party-plus b:nth-child(3) { animation-delay: .24s; } .party-plus b:nth-child(4) { animation-delay: .36s; }
+.party.still .party-girl { animation: none; }
+.party.still .party-kiss { animation: none; opacity: 1; transform: translate(165%, 95%) scale(1.2) rotate(-14deg); }
+.party.still .party-kiss::after, .party.still .party-h { display: none; }
+.party.still .party-plus b { animation: none; }
+@keyframes party-in { from { opacity: 0; } to { opacity: 1; } }
+@keyframes party-out { from { opacity: 1; } to { opacity: 0; } }
+@keyframes party-plus { from { opacity: 0; transform: scale(2.4); } to { opacity: 1; transform: scale(1); } }
+@keyframes party-girl {
+  0% { opacity: 0; transform: translateY(30%) scale(.6); filter: brightness(2.2) saturate(.2); }
+  5% { opacity: .85; transform: translate(-1.5%, 27%) scale(.63) skewX(7deg); filter: brightness(1.8) saturate(.5); }
+  8% { opacity: .25; transform: translate(1.5%, 25%) scale(.66) skewX(-5deg); }
+  11% { opacity: 1; transform: translateY(22%) scale(.7); filter: brightness(1.25) saturate(1); }
+  26% { opacity: 1; transform: translateY(0) scale(1); filter: none; }
+  38% { transform: translateY(1%) scale(.97); }
+  45% { transform: translateY(0) scale(1.24); }
+  53% { transform: scale(1.16); }
+  88% { opacity: 1; transform: scale(1.1); }
+  100% { opacity: 0; transform: scale(1.06); }
+}
+@keyframes party-kiss {
+  0%, 43% { opacity: 0; transform: translate(-50%, -50%) scale(.15) rotate(0deg); }
+  46% { opacity: 1; transform: translate(-50%, -50%) scale(.3) rotate(-4deg); }
+  61% { opacity: 1; transform: translate(165%, 95%) scale(1.32) rotate(-14deg); }
+  64% { transform: translate(165%, 95%) scale(1.1) rotate(-14deg); }
+  68%, 90% { opacity: 1; transform: translate(165%, 95%) scale(1.2) rotate(-14deg); }
+  100% { opacity: 0; transform: translate(165%, 95%) scale(1.2) rotate(-14deg); }
+}
+@keyframes party-ring { from { opacity: .9; transform: scale(.5); } to { opacity: 0; transform: scale(1.7); } }
+@keyframes party-heart {
+  0% { opacity: 0; transform: translate(-50%, -50%) scale(.3); }
+  18% { opacity: 1; }
+  100% { opacity: 0; transform: translate(calc(-50% + var(--dx) * 10), calc(-50% + var(--dy) * 10)) scale(1.25) rotate(var(--r)); }
+}
+
 /*>>>THEMES*/
 /* ═════════ «Лето»: начало 90-х — сумерки, джинса, комикс: обводка тушью, типографские точки, наклейки ═════════ */
 :where(:root), [data-theme="summer"] {
@@ -3624,6 +3675,7 @@ const sndBtn = () => `<button class="b-btn sm dice-snd ${Snd.muted ? 'off' : ''}
 
 function playRoll(roll) {
   const stage = $('#dice-stage'); if (!stage) return;
+  Party.stop();
   const vals = roll.vals, token = ++BV.roll, cam = BV.cam || { x: 0, y: 0, k: 1 }, R = boardRect();
   // размер кубика привязан к доске: при 100% как раньше; если доска сильно уменьшена или увеличена — в разумных пределах на экране
   const base = clamp(R.width / 15, 44, 70), size = r1(clamp(base * cam.k, base * 0.7, 120) / cam.k), SIN = Math.sin(DICE_TILT), COS = Math.cos(DICE_TILT);
@@ -3654,6 +3706,7 @@ function playRoll(roll) {
   const finish = () => {
     if (token !== BV.roll) return;
     BV.rolling = false; logRoll(roll); diceLog();
+    if (vals.every(v => v === 1)) Party.go();      // «+ + + +»
     if (Live.queue.length) setTimeout(() => Live.next(), 2500);   // чужие броски, пришедшие во время этого, показываем по очереди
     const b = $('#dice-banner'); if (b) { b.innerHTML = `${rollTitle(roll) ? `<i>${esc(rollTitle(roll))}</i>` : ''}<b>${signed(roll.total) || '0'}</b><span>${ladder(roll.total)}</span>`; b.classList.add('show'); }
     setTimeout(() => { if (token === BV.roll) { const s = $('#dice-stage'); if (s) s.classList.add('fade'); } }, 12000);
@@ -4183,6 +4236,89 @@ function downloadShared() {
 }
 
 /* ═════════ Действия ═════════ */
+/* ═════════ Праздник на «+ + + +» (только тема «Киберпанк») ═════════
+   Четыре плюса выпадают раз в 81 бросок: на пять секунд поверх страницы — девушка с воздушным поцелуем и неоновый салют.
+   Видят все, у кого открыта доска и включён «Киберпанк». Ничего не сохраняет и не пересылает, нажатий не перехватывает.
+   Убрать целиком: этот объект, две строки с Party в playRoll и в ACT['dice-roll'], блок «Праздник» в styles.css, папку assets/party и её строку в build.py. */
+const Party = {
+  t: [], raf: 0, pic: null, n: 0,
+  LIPS: '<svg viewBox="0 0 120 80" aria-hidden="true"><defs><mask id="party-lipm"><rect width="120" height="80" fill="#fff"/><g stroke="#000" stroke-width=".9" stroke-linecap="round" opacity=".75"><path d="M27 22l1 9M39 15l-1 12M50 13l1 14M70 13l-1 14M81 15l1 12M93 22l-1 9M29 50l-1 9M41 51l1 15M53 51l-1 18M67 51l1 18M79 51l-1 15M91 50l1 9"/></g></mask></defs><g mask="url(#party-lipm)" fill="#ff2e88"><path d="M3 38C18 15 40 4 60 19 80 4 102 15 117 38 98 33 79 35 60 38 41 35 22 33 3 38Z"/><path d="M6 43C26 45 44 45 60 44 76 45 94 45 114 43 101 68 79 77 60 77 41 77 19 68 6 43Z"/></g></svg>',
+  on: () => document.documentElement.dataset.theme === 'cyber',
+  stop() { this.n++; this.t.forEach(clearTimeout); this.t = []; cancelAnimationFrame(this.raf); $$('.party').forEach(x => x.remove()); },
+  /* Картинка нарисована на чёрном: чёрное делаем прозрачным, чтобы вокруг девушки не было квадрата. */
+  girl(src) {
+    return new Promise(res => {
+      if (!src) return res(null);
+      const im = new Image();
+      im.onload = () => {
+        try {
+          const c = document.createElement('canvas'); c.width = im.naturalWidth; c.height = im.naturalHeight;
+          const x = c.getContext('2d'); x.drawImage(im, 0, 0);
+          const d = x.getImageData(0, 0, c.width, c.height), a = d.data;
+          for (let i = 0; i < a.length; i += 4) { const m = Math.max(a[i], a[i + 1], a[i + 2]); a[i + 3] = m <= 5 ? 0 : m >= 46 ? 255 : Math.round((m - 5) * 6.2); }
+          x.putImageData(d, 0, 0); res(c);
+        } catch (e) { im.className = 'raw'; res(im); }
+      };
+      im.onerror = () => res(null); im.src = src;
+    });
+  },
+  async go() {
+    if (!this.on()) return;
+    this.stop(); const n = this.n;
+    if (!this.pic) this.pic = await this.girl(assetSrc('party-kiss'));
+    if (n !== this.n || !this.on()) return;
+    const still = !!(window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches);
+    const el = document.createElement('div'); el.className = 'party' + (still ? ' still' : ''); el.id = 'party'; el.setAttribute('aria-hidden', 'true');
+    const hearts = Array.from({ length: 9 }, (_, i) => { const a = -2.5 + i * 0.5 + Math.random() * 0.3, r = 26 + Math.random() * 20; return `<i class="party-h ${i % 3 === 1 ? 'c' : ''}" style="--dx:${Math.round(Math.cos(a) * r)}%;--dy:${Math.round(Math.sin(a) * r - 6)}%;--r:${Math.round(Math.random() * 50 - 25)}deg;animation-delay:${(2.12 + i * 0.05).toFixed(2)}s">\u2665\uFE0E</i>`; }).join('');
+    el.innerHTML = `<canvas class="party-cv"></canvas><div class="party-girl">${hearts}<div class="party-kiss">${this.LIPS}</div></div><div class="party-plus"><b>+</b><b>+</b><b>+</b><b>+</b></div>`;
+    if (this.pic) el.querySelector('.party-girl').prepend(this.pic); else el.classList.add('nopic');
+    document.body.append(el);
+    if (!still) this.fire(el.querySelector('canvas'));
+    this.t.push(setTimeout(() => el.classList.add('out'), 4700), setTimeout(() => { if (n === this.n) this.stop(); }, 5400));
+  },
+  /* Салют: ракеты-штрихи с краёв, вспышка — кольцо прицела и россыпь «пикселей» и плюсиков трёх неоновых цветов. */
+  fire(cv) {
+    const ctx = cv.getContext('2d'); if (!ctx) return;
+    const dpr = Math.min(1.5, window.devicePixelRatio || 1), W = innerWidth, H = innerHeight; cv.width = Math.round(W * dpr); cv.height = Math.round(H * dpr); ctx.scale(dpr, dpr);
+    const COL = ['#ff2e88', '#5ef6ff', '#fcee0a'], R = (a, b) => a + Math.random() * (b - a), u = clamp(Math.min(W, H) / 800, 0.7, 1.3), TAU = Math.PI * 2;
+    const shots = Array.from({ length: W < 700 ? 7 : 10 }, (_, i) => {
+      const side = i % 3, x = side === 0 ? R(0.05, 0.28) : side === 1 ? R(0.72, 0.95) : R(0.3, 0.7);      // по бокам от девушки и над головой, лицо не закрываем
+      return { t: 0.3 + i * 0.33 + R(0, 0.12), x: x * W, y: (side === 2 ? R(0.05, 0.16) : R(0.14, 0.52)) * H, c: COL[i % 3], ci: i % 3, done: false };
+    });
+    const parts = [], rings = [], t0 = performance.now(); let last = t0;
+    const step = now => {
+      if (!cv.isConnected) return;
+      const t = (now - t0) / 1000, dt = Math.min(0.05, (now - last) / 1000); last = now;
+      ctx.clearRect(0, 0, W, H); ctx.globalCompositeOperation = 'lighter';
+      for (const s of shots) {
+        const k = (t - s.t) / 0.42; if (k < 0 || s.done) continue;
+        if (k < 1) { const y = H - (H - s.y) * (1 - (1 - k) * (1 - k)); ctx.fillStyle = s.c; ctx.globalAlpha = 0.9; ctx.fillRect(s.x - 1, y, 2, 30 * u * (1 - k) + 6); ctx.globalAlpha = 0.22; ctx.fillRect(s.x - 3, y, 6, 16 * u); continue; }
+        s.done = true; rings.push({ x: s.x, y: s.y, c: s.c, t });
+        for (let j = 0; j < 46; j++) {
+          const a = j / 46 * TAU + R(-0.07, 0.07), v = R(150, 430) * u * (j % 4 === 0 ? 1.2 : 1);
+          parts.push({ x: s.x, y: s.y, vx: Math.cos(a) * v, vy: Math.sin(a) * v, c: j % 6 === 0 ? '#ffffff' : j % 3 === 0 ? COL[(s.ci + 1) % 3] : s.c, life: R(0.9, 1.7), age: 0, plus: j % 4 === 0, z: R(2.2, 4.4) * u });
+        }
+      }
+      for (const r of rings) {
+        const k = (t - r.t) / 0.55; if (k > 1) continue;
+        const rad = (18 + 170 * k) * u; ctx.globalAlpha = (1 - k) * 0.8; ctx.strokeStyle = ctx.fillStyle = r.c; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.arc(r.x, r.y, rad, 0, TAU); ctx.stroke();
+        for (let q = 0; q < 8; q++) { const a = q * TAU / 8 + 0.39; ctx.fillRect(r.x + Math.cos(a) * (rad + 9) - 1.5, r.y + Math.sin(a) * (rad + 9) - 1.5, 3, 3); }
+      }
+      for (const p of parts) {
+        if (p.age >= p.life) continue;
+        p.age += dt; const d = Math.pow(0.1, dt); p.vx *= d; p.vy = p.vy * d + 80 * u * dt; p.x += p.vx * dt; p.y += p.vy * dt;
+        const k = 1 - p.age / p.life, z = p.z; if (k < 0.45 && Math.random() < 0.3) continue;                // под конец искры мерцают, как битые пиксели
+        ctx.globalAlpha = Math.min(1, k * 1.7); ctx.fillStyle = p.c;
+        if (p.plus) { ctx.fillRect(p.x - z * 1.6, p.y - z * 0.4, z * 3.2, z * 0.8); ctx.fillRect(p.x - z * 0.4, p.y - z * 1.6, z * 0.8, z * 3.2); }
+        else { ctx.fillRect(p.x - z / 2, p.y - z / 2, z, z); ctx.globalAlpha *= 0.3; ctx.fillRect(p.x - z * 3, p.y - 0.5, z * 6, 1); }
+      }
+      ctx.globalAlpha = 1; ctx.globalCompositeOperation = 'source-over';
+      if (t < 5.3) this.raf = requestAnimationFrame(step);
+    };
+    this.raf = requestAnimationFrame(step);
+  },
+};
+
 /* ═════════ «Взлом»: зрелище по кнопке ведущего ═════════
    Слой поверх страницы — ничего не меняет в записях, листах и на доске. Ведущий включает и выключает; игрокам состояние
    приходит по тому же каналу, что и доска (вместе с сигналом «ведущий на связи», поэтому опоздавшие тоже его получают).
@@ -4555,7 +4691,10 @@ const ACT = {
   'b-order': el => { const it = selItem(), b = BV.b; if (!it) return; boardSnap(); b.items = b.items.filter(x => x !== it); if (el.dataset.v === 'front') b.items.push(it); else b.items.unshift(it); boardDraw(); boardTouch(); },
   'b-remove': () => { const it = selItem(); if (!it) return; boardSnap(); BV.b.items = BV.b.items.filter(x => x !== it); BV.sel = null; boardDraw(); boardTouch(); },
   'b-refresh': () => refreshViewer(true),
-  'dice-roll': () => { if (!BV.rolling) rollDice(); },
+  'dice-roll': (el, e) => {
+    if (e && e.altKey && Party.on() && (!ONLINE || OWNER)) return Party.go();      // Alt + нажатие: посмотреть праздник «+ + + +» у себя, без броска
+    if (!BV.rolling) rollDice();
+  },
   'dice-sound': el => { Snd.toggle(); el.outerHTML = sndBtn(); },
   'dice-mod': el => { BV.mod = clamp(BV.mod + +el.dataset.v, -4, 12); diceLog(); },
   'dice-history': () => { BV.log = !BV.log; diceLog(); },
