@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="ru" data-theme="summer">
+<html lang="ru" data-theme="cyber">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -606,6 +606,22 @@ a.btn { text-decoration: none; }
 .board[data-tool="move"] #bitems image, .board[data-tool="move"] #bitems rect { pointer-events: all; cursor: move; }
 .board.space #bitems image { cursor: grab; }
 .b-miss { fill: var(--surface-2); stroke: var(--border); stroke-dasharray: 8 6; }
+/* Надписи на доске */
+.board[data-tool="text"] .bsvg { cursor: text; }
+.b-text text { white-space: pre; paint-order: stroke; stroke-width: 7px; stroke-linejoin: round; pointer-events: none; user-select: none; -webkit-user-select: none; }
+.b-text .ink-light { stroke: rgba(8, 8, 12, .62); }
+.b-text .ink-dark { stroke: rgba(255, 255, 255, .72); }
+.b-thit { fill: transparent; stroke: none; }
+.board.live #bitems > .b-text:not(.drag) { transition: transform .12s linear; }
+#dlg .bt-text { width: 100%; min-height: 96px; resize: vertical; font-size: 26px; line-height: 1.25; background: #1b1b22 !important; border-color: #3a3a46; }
+#dlg .bt-text.ink-dark { background: #ecebe4 !important; border-color: #cfcdc2; }
+.bt-text::placeholder { color: #8a8a96; font-family: inherit; }
+.bt-fonts { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 4px; }
+.bt-font { display: grid; gap: 2px; padding: 8px 6px 7px; border: 1px solid var(--border); border-radius: 8px; background: var(--surface-2); color: var(--text); cursor: pointer; text-align: center; }
+.bt-font b { font-size: 21px; line-height: 1.2; white-space: nowrap; }
+.bt-font span { font-size: 11.5px; color: var(--text-2, var(--muted)); font-family: var(--font-body, inherit); }
+.bt-font.on { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); }
+.bt-colors { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 6px; }
 /* У зрителя картинка, которую двигает ведущий, едет плавно, а не рывками */
 .board.live #bitems > :not(.drag) { transition: x .12s linear, y .12s linear, width .12s linear, height .12s linear; }
 .b-view { white-space: nowrap; }
@@ -1596,6 +1612,7 @@ const ICON = {
   board: '<rect x="3" y="4" width="18" height="13" rx="2"/><path d="M7 13c1.5-4 3.5 1.5 5-1.5s3-1.5 5-3"/><path d="M9 21h6M12 17v4"/>',
   cursor: '<path d="M5 3.5l13.5 6.8-5.7 1.9-2 5.8z"/>',
   pen: '<path d="M4 20l1.2-5L16 4.2l3.8 3.8L9 18.8z"/><path d="M13.5 6.7l3.8 3.8"/>',
+  text: '<path d="M5 7V5h14v2"/><path d="M12 5v14"/><path d="M9 19h6"/>',
   eraser: '<path d="M9 20h11"/><path d="M4.6 14.4 14 5l5 5-9 9H7.4z"/><path d="M9.3 9.7l5 5"/>',
   undo: '<path d="M5 9h9a5 5 0 0 1 0 10H9"/><path d="M9 5 5 9l4 4"/>',
   minus: '<path d="M5 12h14"/>',
@@ -2812,6 +2829,7 @@ const Sync = {
   async run(force) {
     clearTimeout(this.timer);
     if (this.running) { this.again = true; return; }
+    if (!force && Live.partBusy()) { this.pending = true; this.at = Date.now() + 1200; this.timer = setTimeout(() => this.run(), 1200); return; }   // от картинки игрока пока есть только уменьшенная копия
     this.running = true; this.again = false; this.pending = false; this.since = 0; this.quick = false; this.status = 'saving'; this.paint();
     try { if (this.loading) await this.loading; await this.push(force); this.status = 'ok'; this.error = ''; this.conflict = false; if (this.pubNew) { Live.saved(this.pubNew); this.pubNew = null; } }
     catch (e) {
@@ -2989,8 +3007,8 @@ async function copyText(text, okMsg) {
   catch (e) { openDlg('Скопируйте ссылку', `<p>Выделите адрес и скопируйте его:</p><input class="inp" readonly value="${esc(text)}" onfocus="this.select()">`, `<span class="spacer"></span><button class="btn primary" data-act="dlg-close">Готово</button>`, 520); }
 }
 function openLogin() {
-  openDlg('Вход для владельца', `<p>Вставьте ключ владельца — тот, что вы создали на GitHub при публикации журнала. Он начинается с <code>ghp_</code>.</p>
-    <input class="inp" id="ol-token" type="password" placeholder="ghp_…" autocomplete="off" aria-label="Ключ владельца">
+  openDlg('Вход для владельца', `<p>Вставьте ключ владельца, созданный на GitHub. Он начинается с <code>ghp_</code> или с <code>github_pat_</code>.</p>
+    <input class="inp" id="ol-token" type="password" placeholder="ghp_… или github_pat_…" autocomplete="off" aria-label="Ключ владельца">
     <div class="err" id="dlg-error" hidden></div>
     <p class="small muted">Ключ сохранится только в этом браузере. Если вы не владелец журнала, входить не нужно: читать можно и так.</p>`,
     `<span class="spacer"></span><button class="btn ghost" data-act="dlg-close">Отмена</button><button class="btn primary" data-act="owner-login-go">Войти</button>`, 500);
@@ -3000,7 +3018,12 @@ async function loginGo() {
   const token = $('#ol-token').value.trim(); if (!token) return dlgError('Вставьте ключ.');
   dlgError(''); const prev = GH.token; GH.token = token;
   try { await GH.api('GET', repoBase(privT(ONLINE))); }
-  catch (e) { GH.token = prev; return dlgError(e instanceof GhError && [401, 403, 404].includes(e.status) ? 'Этот ключ не подходит к журналу. Проверьте, что скопировали его целиком.' : ghMessage(e)); }
+  catch (e) {
+    GH.token = prev; const st = e instanceof GhError ? e.status : 0;
+    if (st === 401) return dlgError('GitHub не знает такого ключа: он скопирован не целиком, удалён или у него вышел срок. Ключ ghp_… длиной 40 знаков, ключ github_pat_… — 93 знака; сейчас вставлено ' + token.length + '.');
+    if (st === 403 || st === 404) return dlgError('Ключ настоящий, но у него нет доступа к закрытой части журнала — хранилищу «' + ONLINE.priv + '». Ключу github_pat_… нужны оба хранилища («' + ONLINE.repo + '» и «' + ONLINE.priv + '») и право Contents: Read and write.');
+    return dlgError(ghMessage(e));
+  }
   if (!lsSet(keyName(), token)) return dlgError('Браузер не разрешил сохранить ключ (возможно, включён приватный режим).');
   location.reload();
 }
@@ -3088,11 +3111,11 @@ async function publish(token, name, ui, replace) {
   } else ui.note(3, '— записи на сайте не трогаю');
   ui.stage(4);
   try { await GH.api('POST', `/repos/${owner}/${name}/pages`, { source: { branch: site.branch, path: '/' } }); }
-  catch (e) { if (!(e instanceof GhError) || e.status !== 409) throw e; }
+  catch (e) { if (!(e instanceof GhError) || !(e.status === 409 || (update && e.status === 403))) throw e; }
   ui.stage(5);
   let live = false;
   for (let i = 0; i < 30 && !live; i++) {
-    const pg = await GH.api('GET', `/repos/${owner}/${name}/pages`).catch(() => null);
+    const pg = await GH.api('GET', `/repos/${owner}/${name}/pages`).catch(e => update && e instanceof GhError && e.status === 403 ? { status: 'built' } : null);   // ключу не видно состояние показа — сайт уже работал, ждать нечего
     live = !!pg && pg.status === 'built';
     if (!live) { ui.note(5, `— ${(i + 1) * 5} с`); await sleep(5000); }
   }
@@ -3134,8 +3157,14 @@ function applyOp(b, op) {
     return ch;
   }
   if (op.k === 'add') {                               // игрок положил картинку; сама картинка к этому времени уже у ведущего
-    const n = cleanItem(op.it); if (!n || !IMG[n.img] || b.items.length >= 600 || b.items.some(x => x.id === n.id)) return false;
+    const n = cleanItem(op.it); if (!n || (n.txt === undefined && !IMG[n.img]) || b.items.length >= 600 || b.items.some(x => x.id === n.id)) return false;
     delete n.lock; b.items.push(n); return true;
+  }
+  if (op.k === 'text') {                              // игрок изменил надпись: текст, шрифт, цвет
+    const it = b.items.find(x => x.id === (op.it && op.it.id)); if (!it || it.txt === undefined || it.lock) return false;
+    const n = cleanItem({ ...op.it, x: it.x, y: it.y }); if (!n || n.txt === undefined) return false;
+    if (it.txt === n.txt && it.f === n.f && it.c === n.c && it.w === n.w && it.h === n.h) return false;
+    it.txt = n.txt; it.f = n.f; it.c = n.c; it.w = n.w; it.h = n.h; return true;
   }
   if (op.k === 'del') {                               // игрок отменил свою только что положенную картинку
     const i = b.items.findIndex(x => x.id === (op.it && op.it.id)); if (i < 0 || b.items[i].lock) return false;
@@ -3161,6 +3190,83 @@ function hostUi() {
 const BV = { ids: {}, cams: {}, b: null, cam: null, tool: 'move', color: '#e5484d', size: 1, sel: null, undo: [], gundo: [], blank: null, drag: null, pts: new Map(), space: false, mod: 0, rolls: [], roll: 0, log: false, secret: false };
 const B_COLORS = ['#e5484d', '#f2a33c', '#f2d94c', '#3fb86b', '#4a9df0', '#f4f1e8', '#17171a'];
 const B_SIZES = [2.5, 5, 11];
+/* Надписи на доске. Все шрифты, кроме первого, встроены в файл сайта и содержат и латиницу, и кириллицу. */
+const B_FONTS = [
+  { id: 'sans', name: 'Обычный', css: 'system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif', w: 600 },
+  { id: 'caveat', name: 'От руки', css: '"Caveat", cursive', w: 700 },
+  { id: 'alegreya', name: 'Книжный', css: '"Alegreya", Georgia, serif', w: 700 },
+  { id: 'forum', name: 'Антиква', css: '"Forum", Georgia, serif', w: 400 },
+  { id: 'oswald', name: 'Плакат', css: '"Oswald", "Arial Narrow", sans-serif', w: 500 },
+  { id: 'tektur', name: 'Техно', css: '"Tektur", monospace', w: 600 },
+];
+const B_TEXT_MAX = 400, SVGNS = 'http://www.w3.org/2000/svg';
+const bFont = id => B_FONTS.find(f => f.id === id) || B_FONTS[0];
+const textLines = t => String(t).split('\n').slice(0, 12);
+const cleanText = t => String(t == null ? '' : t).replace(/\r/g, '').replace(/[\u0000-\u0009\u000b-\u001f]/g, '').split('\n').slice(0, 12).join('\n').slice(0, B_TEXT_MAX).replace(/\s+$/, '');
+const darkInk = c => { const n = parseInt(String(c).slice(1), 16); return ((n >> 16) * 0.299 + ((n >> 8) & 255) * 0.587 + (n & 255) * 0.114) < 90; };
+/* Надпись рисуется в своих единицах (строка — 120, буквы — 100) и растягивается до нужного размера целиком: так её можно тянуть за уголок, как картинку */
+function textNode(n, it) {
+  const sig = it.f + '|' + it.c + '|' + it.txt; if (n.dataset.sig === sig) return; n.dataset.sig = sig;
+  const f = bFont(it.f), lines = textLines(it.txt); n.textContent = '';
+  const r = document.createElementNS(SVGNS, 'rect'); r.setAttribute('class', 'b-thit'); r.setAttribute('height', lines.length * 120); n.append(r);
+  const t = document.createElementNS(SVGNS, 'text'); t.setAttribute('font-size', 100); t.setAttribute('fill', it.c); t.setAttribute('class', darkInk(it.c) ? 'ink-dark' : 'ink-light');
+  t.style.fontFamily = f.css; t.style.fontWeight = f.w;
+  lines.forEach((ln, i) => { const sp = document.createElementNS(SVGNS, 'tspan'); sp.setAttribute('x', 4); sp.setAttribute('y', 92 + i * 120); sp.textContent = ln || ' '; t.append(sp); });
+  n.append(t);
+}
+function itemGeo(n, it) {
+  if (it.txt === undefined) { n.setAttribute('x', it.x); n.setAttribute('y', it.y); n.setAttribute('width', it.w); n.setAttribute('height', it.h); return; }
+  const k = it.h / (textLines(it.txt).length * 120) || 1;
+  n.setAttribute('transform', `translate(${it.x} ${it.y}) scale(${k})`);
+  if (n.firstChild) n.firstChild.setAttribute('width', it.w / k);
+}
+async function textWidth(txt, fid) {
+  const f = bFont(fid), font = `${f.w} 100px ${f.css}`;
+  try { if (document.fonts && document.fonts.load) await Promise.race([document.fonts.load(font, txt), sleep(1500)]); } catch (e) { /* измерим тем, что есть */ }
+  const g = document.createElement('canvas').getContext('2d'); g.font = font;
+  return Math.max(40, ...textLines(txt).map(l => g.measureText(l).width)) + 10;
+}
+let BT = null;
+function openBoardText(it, at) {
+  if (boardRO()) return;
+  BT = { id: it ? it.id : null, at, f: it ? it.f : (BV.tf || B_FONTS[0].id), c: it ? it.c : (BV.tc || BV.color) };
+  openDlg(it ? 'Изменить надпись' : 'Надпись на доске', `<textarea class="inp bt-text" id="bt-text" rows="3" maxlength="${B_TEXT_MAX}" placeholder="Текст надписи" aria-label="Текст надписи">${it ? esc(it.txt) : ''}</textarea>
+    <div class="lab">Шрифт</div>
+    <div class="bt-fonts">${B_FONTS.map(f => `<button type="button" class="bt-font" data-act="bt-font" data-v="${f.id}"><b style="font-family:${esc(f.css)};font-weight:${f.w}">Абв Abc</b><span>${f.name}</span></button>`).join('')}</div>
+    <div class="lab">Цвет</div>
+    <div class="bt-colors">${B_COLORS.map(c => `<button type="button" class="b-color" data-act="bt-color" data-v="${c}" style="--c:${c}" aria-label="Цвет"></button>`).join('')}</div>
+    <p class="small muted">Размер меняется на доске: выберите надпись и потяните за уголок. Чтобы изменить текст, щёлкните по надписи дважды.</p>`,
+    `${it && !READONLY ? `<button class="btn ghost" data-act="bt-del">Удалить</button>` : ''}<span class="spacer"></span><button class="btn ghost" data-act="dlg-close">Отмена</button><button class="btn primary" data-act="bt-save">Готово</button>`, 540);
+  btPaint(); const ta = $('#bt-text'); ta.focus(); ta.setSelectionRange(ta.value.length, ta.value.length);
+  $('#dlg').addEventListener('keydown', e => { if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) { e.preventDefault(); btSave(); } });
+}
+function btPaint() {
+  const ta = $('#bt-text'); if (!ta || !BT) return; const f = bFont(BT.f);
+  $$('#dlg .bt-font').forEach(b => b.classList.toggle('on', b.dataset.v === BT.f));
+  $$('#dlg .bt-colors .b-color').forEach(b => b.classList.toggle('on', b.dataset.v === BT.c));
+  ta.style.fontFamily = f.css; ta.style.fontWeight = f.w; ta.style.color = BT.c; ta.classList.toggle('ink-dark', darkInk(BT.c));
+}
+async function btSave() {
+  const st = BT, ta = $('#bt-text'); if (!st || !ta || !BV.b || !$('#board')) return closeDlg();
+  const txt = cleanText(ta.value); if (!txt.trim()) { toast('Введите текст надписи'); return ta.focus(); }
+  if (boardRO()) return toast('Нет связи с ведущим — надпись не сохранится');
+  if (st.busy) return; st.busy = true;
+  const b = BV.b, W0 = await textWidth(txt, st.f), n = textLines(txt).length;
+  if (BT !== st || BV.b !== b || !$('#board')) return;
+  const cur = st.id ? b.items.find(x => x.id === st.id) : null;
+  if (st.id && (!cur || cur.txt === undefined)) { BT = null; closeDlg(); return toast('Этой надписи на доске уже нет'); }
+  const lh = cur ? cur.h / textLines(cur.txt).length : 40 / BV.cam.k;
+  const it = { id: cur ? cur.id : uid(), txt, f: st.f, c: st.c, x: cur ? cur.x : r1(st.at[0]), y: cur ? cur.y : r1(st.at[1] - lh / 2), w: r1(W0 * lh / 120), h: r1(lh * n) };
+  BV.tf = st.f; BV.tc = st.c; BT = null; closeDlg();
+  if (READONLY) {                              // игрок: надпись встаёт у него сразу, ведущему уходит действие
+    if (cur) { const was = { id: cur.id, txt: cur.txt, f: cur.f, c: cur.c, w: cur.w, h: cur.h }; Live.gop({ k: 'text', b: b.id, it: { id: it.id, txt, f: it.f, c: it.c, w: it.w, h: it.h } }, { k: 'text', b: b.id, it: was }); }
+    else if (!Live.gop({ k: 'add', b: b.id, it }, { k: 'del', b: b.id, it: { id: it.id } })) return;
+    BV.sel = it.id; setTool('move'); boardDraw(); return;
+  }
+  boardSnap();
+  if (cur) Object.assign(cur, { txt, f: it.f, c: it.c, w: it.w, h: it.h }); else b.items.push(it);
+  BV.sel = it.id; setTool('move'); boardDraw(); boardTouch();
+}
 const LADDER = { 8: 'Легендарный', 7: 'Эпический', 6: 'Фантастический', 5: 'Великолепный', 4: 'Отличный', 3: 'Хороший', 2: 'Неплохой', 1: 'Средний', 0: 'Посредственный', '-1': 'Плохой', '-2': 'Ужасный' };
 /* В оформлении «Лето» подписи к броскам — словечки начала 90-х; числа и правила те же. */
 const LADDER_SUMMER = { 8: 'Легендарно', 7: 'Полный улёт', 6: 'Улёт', 5: 'Отпад', 4: 'Потрясно', 3: 'Круто', 2: 'Клёво', 1: 'Сойдёт', 0: 'Так себе', '-1': 'Лажа', '-2': 'Отстой' };
@@ -3218,13 +3324,13 @@ function viewBoard() {
       ${ONLINE && READONLY && !solo ? `<button class="b-btn wide" data-act="b-refresh" title="Загрузить свежую версию доски">${ic('refresh')}<span>Обновить</span></button>` : ''}
     </div>
     ${gtool ? `<div class="b-panel b-tools" id="b-gtools" ${ro ? 'hidden' : ''}>
-      ${tool('move', 'cursor', 'Двигать картинки и лист', 'V')}${tool('pen', 'pen', 'Маркер', 'M')}${tool('erase', 'eraser', 'Ластик: стирает линии', 'E')}
+      ${tool('move', 'cursor', 'Двигать картинки и лист', 'V')}${tool('pen', 'pen', 'Маркер', 'M')}${tool('erase', 'eraser', 'Ластик: стирает линии', 'E')}${tool('text', 'text', 'Надпись: щёлкните по доске там, где она нужна', 'T')}
       <i class="b-sep"></i>
       <button class="b-btn" data-act="b-upload" title="Добавить картинку с компьютера. Ещё её можно перетащить на доску или вставить из буфера (Ctrl+V)" aria-label="Добавить картинку">${ic('image')}</button>
       <button class="b-btn" data-act="b-undo" title="Отменить моё последнее действие (Ctrl+Z)" aria-label="Отменить">${ic('undo')}</button>
     </div>` : ''}
     ${READONLY ? '' : `<div class="b-panel b-tools">
-      ${tool('move', 'cursor', 'Двигать картинки и лист', 'V')}${tool('pen', 'pen', 'Маркер', 'M')}${tool('erase', 'eraser', 'Ластик: стирает линии', 'E')}
+      ${tool('move', 'cursor', 'Двигать картинки и лист', 'V')}${tool('pen', 'pen', 'Маркер', 'M')}${tool('erase', 'eraser', 'Ластик: стирает линии', 'E')}${tool('text', 'text', 'Надпись: щёлкните по доске там, где она нужна', 'T')}
       <i class="b-sep"></i>
       <button class="b-btn" data-act="b-add-menu" title="Добавить картинку" aria-label="Добавить картинку">${ic('image')}</button>
       <button class="b-btn" data-act="b-undo" title="Отменить (Ctrl+Z)" aria-label="Отменить">${ic('undo')}</button>
@@ -3262,6 +3368,11 @@ function boardMount() {
   svg.addEventListener('pointerup', bUp); svg.addEventListener('pointercancel', bUp);
   svg.addEventListener('wheel', e => { e.preventDefault(); const r = boardRect(); zoomAt(e.clientX - r.left, e.clientY - r.top, Math.exp(-e.deltaY * (e.ctrlKey ? 0.01 : 0.0016))); }, { passive: false });
   svg.addEventListener('contextmenu', e => e.preventDefault());
+  svg.addEventListener('dblclick', e => {            // двойной щелчок по надписи — изменить её
+    if (boardRO() || BV.tool !== 'move') return;
+    const el = document.elementFromPoint(e.clientX, e.clientY), node = el && el.closest('#bitems [data-id]'), it = node && BV.b.items.find(i => i.id === node.dataset.id);   // e.target здесь — весь лист: нажатие было «захвачено»
+    if (it && it.txt !== undefined && !it.lock) openBoardText(it);
+  });
   BV.cam = BV.cams[b.id]; if (!BV.cam) boardFit(true);
   boardDraw(); applyCam(); boardChrome(); diceLog(); winsMount(); fateRender();
 }
@@ -3303,11 +3414,11 @@ function boardDraw() {
   const b = BV.b, g = $('#bitems'), old = new Map();
   for (const n of [...g.children]) old.set(n.dataset.id + '|' + n.tagName, n);
   b.items.forEach((it, i) => {
-    const src = IMG[it.img], tag = src ? 'image' : 'rect', key = it.id + '|' + tag; let n = old.get(key);
+    const isText = it.txt !== undefined, src = isText ? null : IMG[it.img], tag = isText ? 'g' : src ? 'image' : 'rect', key = it.id + '|' + tag; let n = old.get(key);
     if (n) old.delete(key);
-    else { n = document.createElementNS('http://www.w3.org/2000/svg', tag); n.dataset.id = it.id; if (src) n.setAttribute('preserveAspectRatio', 'none'); else n.setAttribute('class', 'b-miss'); }
-    if (src && n.getAttribute('href') !== src) n.setAttribute('href', src);
-    n.setAttribute('x', it.x); n.setAttribute('y', it.y); n.setAttribute('width', it.w); n.setAttribute('height', it.h);
+    else { n = document.createElementNS(SVGNS, tag); n.dataset.id = it.id; if (isText) n.setAttribute('class', 'b-text'); else if (src) n.setAttribute('preserveAspectRatio', 'none'); else n.setAttribute('class', 'b-miss'); }
+    if (isText) textNode(n, it); else if (src && n.getAttribute('href') !== src) n.setAttribute('href', src);
+    itemGeo(n, it);
     if (g.children[i] !== n) g.insertBefore(n, g.children[i] || null);
   });
   old.forEach(n => n.remove());
@@ -3325,10 +3436,10 @@ function boardSelUi() {
   g.innerHTML = `<rect class="b-outline" x="${it.x}" y="${it.y}" width="${it.w}" height="${it.h}" stroke-width="${1.5 / c.k}"/>` +
     (it.lock ? '' : corner('nw', it.x, it.y) + corner('ne', it.x + it.w, it.y) + corner('sw', it.x, it.y + it.h) + corner('se', it.x + it.w, it.y + it.h));
   if (!bar) return;                             // игроку панель с «закрепить / удалить» не нужна
-  const key = it.id + (it.lock ? 'L' : '');
+  const isText = it.txt !== undefined, key = it.id + (it.lock ? 'L' : '') + (isText ? 'T' : '');
   if (bar.hidden || bar.dataset.for !== key) {
     bar.dataset.for = key;
-    bar.innerHTML = `<button class="b-btn wide" data-act="b-lock" title="${it.lock ? 'Снова разрешить двигать картинку' : 'Закрепить, чтобы случайно не сдвинуть (удобно для карты)'}">${ic('lock')}<span>${it.lock ? 'Открепить' : 'Закрепить'}</span></button>
+    bar.innerHTML = `${isText && !it.lock ? `<button class="b-btn wide" data-act="b-text-edit" title="Изменить текст, шрифт или цвет (двойной щелчок по надписи)">${ic('edit')}<span>Изменить</span></button>` : ''}<button class="b-btn wide" data-act="b-lock" title="${it.lock ? 'Снова разрешить двигать картинку' : 'Закрепить, чтобы случайно не сдвинуть (удобно для карты)'}">${ic('lock')}<span>${it.lock ? 'Открепить' : 'Закрепить'}</span></button>
       <button class="b-btn" data-act="b-order" data-v="front" title="Поверх остальных картинок" aria-label="На передний план">${ic('front')}</button>
       <button class="b-btn" data-act="b-order" data-v="back" title="Под остальные картинки" aria-label="На задний план">${ic('back')}</button>
       <button class="b-btn danger" data-act="b-remove" title="Убрать с доски (Delete)" aria-label="Убрать с доски">${ic('trash')}</button>`;
@@ -3400,6 +3511,7 @@ function bDown(e) {
     BV.drag = { type: 'pen', p: [r1(x), r1(y)], el, w }; el.setAttribute('d', strokePath(BV.drag.p)); return;
   }
   if (BV.tool === 'erase') { BV.drag = { type: 'erase' }; return eraseAt(x, y); }
+  if (BV.tool === 'text') { BV.pts.delete(e.pointerId); try { e.currentTarget.releasePointerCapture(e.pointerId); } catch (err) { /* не страшно */ } return openBoardText(null, [x, y]); }
   const h = e.target.closest('[data-h]'), cur = selItem();
   if (h && cur) { BV.drag = { type: 'resize', it: cur, h: h.dataset.h, w: cur.w, h0: cur.h, ax: h.dataset.h.includes('w') ? cur.x + cur.w : cur.x, ay: h.dataset.h.includes('n') ? cur.y + cur.h : cur.y }; return; }
   const node = e.target.closest('#bitems [data-id]'), it = node && BV.b.items.find(i => i.id === node.dataset.id);
@@ -3431,15 +3543,14 @@ function bMove(e) {
   if (d.type === 'move') {
     if (!d.moved) { if (Math.hypot(e.clientX - d.px, e.clientY - d.py) < 3) return; d.moved = true; dragStart(d, d.node); }
     d.it.x = r1(d.ix + x - d.sx); d.it.y = r1(d.iy + y - d.sy);
-    d.node.setAttribute('x', d.it.x); d.node.setAttribute('y', d.it.y); Live.btick(BV.b, d.it); return boardSelUi();
+    itemGeo(d.node, d.it); Live.btick(BV.b, d.it); return boardSelUi();
   }
   if (d.type === 'resize') {
     if (!d.moved) { d.moved = true; dragStart(d, $(`#bitems [data-id="${d.it.id}"]`)); }
     const it = d.it, sc = Math.max(Math.abs(x - d.ax) / d.w, Math.abs(y - d.ay) / d.h0, 24 / c.k / Math.max(d.w, d.h0));
     it.w = r1(d.w * sc); it.h = r1(d.h0 * sc); it.x = r1(d.h.includes('w') ? d.ax - it.w : d.ax); it.y = r1(d.h.includes('n') ? d.ay - it.h : d.ay);
     const node = $(`#bitems [data-id="${it.id}"]`);
-    if (node) for (const k of ['x', 'y']) node.setAttribute(k, it[k]);
-    if (node) { node.setAttribute('width', it.w); node.setAttribute('height', it.h); }
+    if (node) itemGeo(node, it);
     Live.btick(BV.b, it); boardSelUi();
   }
 }
@@ -3463,34 +3574,54 @@ function bUp(e) {
   }
 }
 const imgSize = src => new Promise((res, rej) => { const im = new Image(); im.onload = () => res({ w: im.naturalWidth || 400, h: im.naturalHeight || 300 }); im.onerror = () => rej(new Error('decode')); im.src = src; });
-async function boardPlace(imgId, at, n = 0) {
-  if (!$('#board') || !BV.b) return;
+async function boardPlace(imgId, at, n = 0, th) {
+  if (!$('#board') || !BV.b) return null;
   const size = await imgSize(IMG[imgId]), r = boardRect(), c = BV.cam;
   const sc = Math.min(r.width * 0.6 / c.k / size.w, r.height * 0.6 / c.k / size.h, 1 / c.k);
   const w = r1(size.w * sc), h = r1(size.h * sc), [cx, cy] = at || [(r.width / 2 - c.x) / c.k, (r.height / 2 - c.y) / c.k];
   const it = { id: uid(), img: imgId, x: r1(cx - w / 2 + n * 28 / c.k), y: r1(cy - h / 2 + n * 28 / c.k), w, h };
-  if (READONLY) {                              // игрок: картинка встаёт у него сразу, ведущему уходит действие
-    if (Live.gop({ k: 'add', b: BV.b.id, it }, { k: 'del', b: BV.b.id, it: { id: it.id } })) { BV.sel = it.id; setTool('move'); boardDraw(); }
-    return;
+  if (READONLY) {                              // игрок: картинка встаёт у него сразу, ведущему уходит действие (с уменьшенной копией, если полная ещё не у него)
+    if (!Live.gop({ k: 'add', b: BV.b.id, it, ...(th ? { th } : {}) }, { k: 'del', b: BV.b.id, it: { id: it.id } })) return null;
+    BV.sel = it.id; setTool('move'); boardDraw(); return it;
   }
   boardSnap();
-  BV.b.items.push(it); BV.sel = it.id; setTool('move'); boardDraw(); boardTouch(); Live.bthumb(imgId);
+  BV.b.items.push(it); BV.sel = it.id; setTool('move'); boardDraw(); boardTouch(); Live.bthumb(imgId); Live.bcast(imgId);
+  return it;
 }
-/* Игрок добавляет картинку: она уменьшается, по частям уходит ведущему, и после его подтверждения встаёт на доску */
+/* Игрок добавляет картинку. Она сразу встаёт на доску: у него — настоящая, у остальных — уменьшенная копия.
+   Полная картинка тем временем едет ведущему и остальным; если она так и не дойдёт, картинка с доски убирается. */
 async function boardGuestFiles(files, at) {
   files = files.filter(f => f.type.startsWith('image/')); if (!files.length || !ONLINE) return;
   if (boardRO()) return toast('Картинки можно добавлять, пока ведущий на связи', 3800);
   if (BV.sending) return toast('Предыдущая картинка ещё отправляется');
   if (files.length > 4) { files = files.slice(0, 4); toast('За один раз — не больше четырёх картинок', 3000); }
   BV.sending = true; let n = 0;
+  const lost = () => toast('Связь с ведущим пропала — картинка не добавлена', 4000);
   try {
     for (const file of files) {
-      let data; try { data = await wireImage(file, 1600, 0.82); } catch (e) { toast('Не получилось прочитать картинку «' + file.name + '»'); continue; }
-      const id = uid(); IMG[id] = data; Live.thumbs.add(id);
-      const note = toastHold('Отправляю картинку ведущему…'), ok = await Live.imput(id); note.remove();
-      if (!ok) { delete IMG[id]; Live.thumbs.delete(id); toast('Картинка не дошла до ведущего. Проверьте связь и попробуйте ещё раз.', 5000); break; }
-      if (!$('#board') || boardRO()) { toast('Связь с ведущим пропала — картинка не добавлена', 4000); break; }
-      await boardPlace(id, at, n++); toast('Картинка добавлена', 1600);
+      let data; try {
+        data = await wireImage(file, 1600, 0.82);
+        /* Передача идёт примерно по 180 000 знаков в секунду, поэтому тяжёлый снимок ужимаем сильнее: иначе чёткая копия идёт дольше трёх секунд */
+        for (const [mx, q] of [[1600, 0.72], [1360, 0.7]]) { if (data.length <= 400000 || !data.startsWith('data:image/jpeg')) break; const d2 = await reencode(data, mx, q); if (WIRE_IMG.test(d2) && d2.length < data.length) data = d2; }
+      } catch (e) { toast('Не получилось прочитать картинку «' + file.name + '»'); continue; }
+      const id = uid(), b = BV.b; IMG[id] = data; Live.thumbs.add(id);
+      let th = null; try { th = await Live.shrink(id, 420, 0.55); if (th.length >= 120000 || !WIRE_IMG.test(th)) th = null; } catch (e) { th = null; }
+      if (!$('#board') || boardRO() || BV.b !== b) { delete IMG[id]; Live.thumbs.delete(id); lost(); break; }
+      const it = th ? await boardPlace(id, at, n++, th) : null;
+      if (th && !it) { delete IMG[id]; Live.thumbs.delete(id); break; }
+      const note = toastHold('Картинка отправляется…');
+      const ok = await Live.imput(id, (k, m) => { note.textContent = 'Картинка отправляется: ' + k + ' из ' + m; }); note.remove();
+      if (!ok) {
+        if (it) {                                // уже стояла на доске с уменьшенной копией — убираем
+          BV.gundo = BV.gundo.filter(u => !(u.k === 'del' && u.it && u.it.id === it.id));
+          if (HOSTED && Live.pub) Live.gop({ k: 'del', b: b.id, it: { id: it.id } });
+          else { b.items = b.items.filter(x => x.id !== it.id); Live.pend = Live.pend.filter(o => !(o.k === 'add' && o.it && o.it.id === it.id)); if (BV.b === b && $('#board')) boardDraw(); }
+        }
+        delete IMG[id]; Live.thumbs.delete(id);
+        toast(it ? 'Картинка не дошла до ведущего и убрана с доски. Проверьте связь и попробуйте ещё раз.' : 'Картинка не дошла до ведущего. Проверьте связь и попробуйте ещё раз.', 6000); break;
+      }
+      if (!it) { if (!$('#board') || boardRO()) { lost(); break; } await boardPlace(id, at, n++); }
+      toast('Картинка добавлена', 1600);
     }
   } finally { BV.sending = false; }
 }
@@ -3534,7 +3665,7 @@ function boardKey(e) {
   if (mod && e.code === 'KeyZ') { e.preventDefault(); boardUndo(); return true; }
   if (mod || e.altKey) return false;
   if ((e.key === 'Delete' || e.key === 'Backspace') && selItem() && !READONLY) { e.preventDefault(); ACT['b-remove'](); return true; }
-  const t = { KeyV: 'move', KeyM: 'pen', KeyE: 'erase' }[e.code]; if (t) { setTool(t); return true; }
+  const t = { KeyV: 'move', KeyM: 'pen', KeyE: 'erase', KeyT: 'text' }[e.code]; if (t) { setTool(t); return true; }
   return false;
 }
 let refreshing = false, refreshNext = null, refreshedAt = 0, staleTimer = 0;
@@ -3842,9 +3973,13 @@ function cleanStroke(o) {
   return { c: o.c, w, p };
 }
 function cleanItem(o) {
-  if (!o || typeof o.id !== 'string' || typeof o.img !== 'string' || o.id.length > 40 || o.img.length > 60) return null;
+  if (!o || typeof o.id !== 'string' || o.id.length > 40) return null;
+  const isText = typeof o.txt === 'string'; if (!isText && (typeof o.img !== 'string' || o.img.length > 60)) return null;
   const x = fin(o.x), y = fin(o.y), w = fin(o.w), h = fin(o.h); if (x === null || y === null || !w || !h || w <= 0 || h <= 0) return null;
-  const it = { id: o.id, img: o.img, x, y, w, h }; if (o.lock) it.lock = true; return it;
+  let it;
+  if (isText) { const txt = cleanText(o.txt); if (!txt.trim()) return null; it = { id: o.id, txt, f: B_FONTS.some(f => f.id === o.f) ? o.f : B_FONTS[0].id, c: /^#[0-9a-fA-F]{6}$/.test(o.c) ? o.c : B_COLORS[5], x, y, w, h }; }
+  else it = { id: o.id, img: o.img, x, y, w, h };
+  if (o.lock) it.lock = true; return it;
 }
 const fnv = s => { let h = 0x811c9dc5; for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 0x01000193); } return (h >>> 0).toString(36); };
 const Live = {
@@ -3859,6 +3994,8 @@ const Live = {
   start() {
     if (!ONLINE || this.started || SANDBOX) return;
     this.started = Date.now(); this.sse(); this.MQTT.forEach((u, i) => this.mqtt(i)); setTimeout(() => this.paint(), 12500);
+    this.MQTT.forEach((u, i) => this.picOpen(i));                                          // отдельные соединения для картинок
+    setInterval(() => { for (const c of this.picC) if (c && c.ok) c.ping(); if (OWNER) this.partBusy(); }, 30000);
     if (OWNER) {
       for (const b of S.boards) for (const st of b.strokes) this.sent.add(shash(st));   // эти линии уже сохранены, зрители получат их с журналом
       setInterval(() => this.bmsg({ t: 'host' }), 8000);
@@ -3870,8 +4007,7 @@ const Live = {
       } catch (e) { /* без отдельного потока всё работает как раньше */ }
       try { if (navigator.locks && navigator.locks.request) navigator.locks.request('cj-host-' + this.room(), { mode: 'shared' }, () => new Promise(() => {})).catch(() => {}); } catch (e) {}
       document.addEventListener('visibilitychange', () => { if (!document.hidden && this.pub) this.bhello(); });
-      this.MQTT.forEach((u, i) => this.bulkIn(i));                                         // сюда игроки присылают картинки
-      setInterval(() => { for (const c of this.inC) if (c && c.ok) c.ping(); }, 30000);                                   // «ведущий на связи»: пока это слышно, игроки могут менять доску и листы
+                                   // «ведущий на связи»: пока это слышно, игроки могут менять доску и листы
       window.addEventListener('pagehide', () => this.bmsg({ t: 'bye' }));
     } else {
       setInterval(() => this.hostCheck(), 4000);
@@ -3884,7 +4020,9 @@ const Live = {
     const now = Date.now();
     if (now - (this.hostSent || 0) > 8500) this.bmsg({ t: 'host' });
     for (const c of this.conn) if (c && now - c.at > 31000) { c.at = now; try { c.ws.send(new Uint8Array([0xC0, 0])); } catch (e) {} }
-    for (const c of this.inC) if (c && c.ok && now - c.pinged > 31000) c.ping();
+    for (const c of this.picC) if (c && c.ok && now - c.pinged > 31000) c.ping();
+    if (this.part.size) this.partBusy();
+    if (this.imRx.size) this.imcheck();
     if (!document.hidden) return;
     if (this.bt && now - this.bLast > 400) this.bflush();
     if (Sync.pending && !Sync.running && Sync.at && now > Sync.at + 1500) Sync.run();   // сохранение, которое проспал таймер
@@ -3998,7 +4136,7 @@ const Live = {
     if (!keep) { clearTimeout(this.tkT); this.tkT = 0; this.tk = null; clearTimeout(this.pnT); this.pnT = 0; this.pn = null; }
     const sk = b.strokes.map(shash), add = [];
     if (withNew) b.strokes.forEach((st, i) => { if (!this.sent.has(sk[i])) { this.sent.add(sk[i]); add.push(st); } });
-    this.bmsg({ t: 'b', b: b.id, c: b.campaignId, n: b.name, at: this.clock(), items: b.items.map(it => ({ id: it.id, img: it.img, x: it.x, y: it.y, w: it.w, h: it.h, lock: it.lock ? 1 : 0 })), sk, add, ack: this.acks.slice(-40) });
+    this.bmsg({ t: 'b', b: b.id, c: b.campaignId, n: b.name, at: this.clock(), items: b.items.map(it => it.txt !== undefined ? { id: it.id, txt: it.txt, f: it.f, c: it.c, x: it.x, y: it.y, w: it.w, h: it.h, lock: it.lock ? 1 : 0 } : { id: it.id, img: it.img, x: it.x, y: it.y, w: it.w, h: it.h, lock: it.lock ? 1 : 0 }), sk, add, ack: this.acks.slice(-40) });
   },
   btick(b, it) {
     if (!this.canPub(b)) return;
@@ -4016,15 +4154,8 @@ const Live = {
   },
   async bthumb(id, b = BV.b, any) {            // any — картинка не с доски: портрет или жетон
     if (!(any ? this.pub : this.pubBoard(b)) || !IMG[id] || (S.files && S.files[id] && !S.files[id].priv)) return;
-    try {
-      const im = new Image(); im.crossOrigin = 'anonymous';
-      await new Promise((res, rej) => { im.onload = res; im.onerror = rej; im.src = IMG[id]; });
-      const sc = Math.min(1, 420 / Math.max(im.naturalWidth, im.naturalHeight)), c = document.createElement('canvas'), g = c.getContext('2d');
-      c.width = Math.max(1, Math.round(im.naturalWidth * sc)); c.height = Math.max(1, Math.round(im.naturalHeight * sc)); g.drawImage(im, 0, 0, c.width, c.height);
-      let d = c.toDataURL('image/webp', 0.55);
-      if (!d.startsWith('data:image/webp')) { g.fillStyle = '#1c1b26'; g.fillRect(0, 0, c.width, c.height); g.drawImage(im, 0, 0, c.width, c.height); d = c.toDataURL('image/jpeg', 0.55); }
-      if (d.length < 120000) this.bmsg({ t: 'th', img: id, d });
-    } catch (e) { /* без уменьшенной копии зритель увидит рамку, а картинку — после сохранения */ }
+    try { const d = await this.shrink(id, 420, 0.55); if (d.length < 120000) this.bmsg({ t: 'th', img: id, d }); }
+    catch (e) { /* без уменьшенной копии зритель увидит рамку, а картинку — после сохранения */ }
   },
   saved(info) {
     if (!OWNER || !info) return; this.lastSaved = info; this.bmsg({ t: 'saved', sha: info.sha, at: info.at });
@@ -4056,10 +4187,11 @@ const Live = {
     if (add.length) this.bmsg({ t: 's', b: b.id, add });
   },
   brecv(p) {
+    if (p && p.t === 'im') return this.imin(p);
     if (!p || p.v !== 2 || typeof p.t !== 'string' || typeof p.u !== 'string' || !/^[a-z0-9]{1,40}$/.test(p.u) || p.u === this.me || !S) return;
     if (OWNER) {
       if (p.o) return;                                   // вторая вкладка самого ведущего
-      if (p.t === 'hi') this.bhello(); else if (p.t === 'ping') this.bmsg({ t: 'host' }); else if (p.t === 'need') this.bneed(p); else if (p.t === 'op') this.gin(p); else if (p.t === 'im') this.imin(p); else if (p.t === 'i' || p.t === 'p') this.tick(p);
+      if (p.t === 'hi') this.bhello(); else if (p.t === 'ping') this.bmsg({ t: 'host' }); else if (p.t === 'need') this.bneed(p); else if (p.t === 'op') this.gin(p); else if (p.t === 'i' || p.t === 'p') this.tick(p);
       return;
     }
     if (!READONLY) return;
@@ -4074,7 +4206,7 @@ const Live = {
       if (typeof p.img !== 'string' || typeof p.d !== 'string' || !/^data:image\/(webp|jpeg|png);base64,[A-Za-z0-9+/=]+$/.test(p.d) || p.d.length > 130000 || IMG[p.img]) return;
       IMG[p.img] = p.d; this.thumbs.add(p.img); imgShown(p.img); return;
     }
-    if (p.t === 'ima') { const e = this.imAck; if (e && e.key === p.img + ':' + p.i) e.res(); return; }   // ведущий получил часть картинки — можно слать следующую
+    if (p.t === 'imneed') return this.imneed(p);
     if (p.t === 'imok') { if (typeof p.img === 'string') { this.imOk.add(p.img); if (this.imOk.size > 200) this.imOk = new Set([...this.imOk].slice(-100)); } return; }
     if (p.t === 'ch') return this.chrecv(p);
     if (p.t === 'cf') return this.cfrecv(p);
@@ -4096,7 +4228,7 @@ const Live = {
       if (!it || !n || (it.lock && !p.o) || (BV.drag && BV.drag.it && BV.drag.it.id === it.id)) return;
       it.x = n.x; it.y = n.y; it.w = n.w; it.h = n.h;
       const node = this.onBoard(b) && [...$('#bitems').children].find(x => x.dataset.id === it.id);
-      if (node) { node.setAttribute('x', it.x); node.setAttribute('y', it.y); node.setAttribute('width', it.w); node.setAttribute('height', it.h); boardSelUi(); }
+      if (node) { itemGeo(node, it); boardSelUi(); }
     } else if (p.t === 'p' && this.onBoard(b)) {
       const id = 'bpen-' + p.u, st = Array.isArray(p.p) && p.p.length >= 2 && cleanStroke(p); let el = document.getElementById(id);
       clearTimeout(this.penT[p.u]);
@@ -4153,9 +4285,13 @@ const Live = {
     const b = S.boards.find(x => x.id === p.b); if (!this.pubBoard(b)) return;
     const cur = this.onBoard(b) && BV.b === b; if (cur) boardSnap();   // «Отменить» у ведущего отменяет и действие игрока
     const tell = () => document.hidden ? this.bsend(b, true) : this.bstate(b);
-    const mine = p.k !== 'del' || this.gadd.has(String(p.it && p.it.id));   // убрать можно только картинку, которую положил игрок
-    if (!mine || !applyOp(b, p)) { if (cur) BV.undo.pop(); return tell(); }
-    if (p.k === 'add') { this.gadd.add(p.it.id); this.bthumb(p.it.img, b); }
+    const mine = p.k !== 'del' || this.gadd.has(String(p.it && p.it.id));   // убрать можно только то, что положил игрок
+    const im = p.k === 'add' && p.it && typeof p.it.img === 'string' && /^[A-Za-z0-9_-]{6,40}$/.test(p.it.img) ? p.it.img : null;
+    const small = !!im && !IMG[im] && typeof p.th === 'string' && p.th.length < 130000 && WIRE_IMG.test(p.th);
+    if (small) { IMG[im] = p.th; this.part.set(im, Date.now()); }           // пока показываем уменьшенную копию, полная уже в пути
+    if (!mine || !applyOp(b, p)) { if (small) { delete IMG[im]; this.part.delete(im); } if (cur) BV.undo.pop(); return tell(); }
+    if (p.k === 'add') { this.gadd.add(p.it.id); if (small) this.bmsg({ t: 'th', img: im, d: p.th }); else if (im) this.bthumb(im, b); }
+    if (p.k === 'del' && this.part.size) this.partBusy();
     b.updatedAt = Date.now(); save(5000); if (cur) boardDraw(); tell();
   },
   /* ── Факты мест в прямом эфире: ведущий рассылает список целиком, игрок шлёт ведущему одно поле ── */
@@ -4188,15 +4324,17 @@ const Live = {
     for (const o of this.lfq.values()) if (o.loc === l.id) { while (f.length <= o.i) f.push(''); f[o.i] = o.val; }
     l.facts = f; if (!quiet) factsSync(l);
   },
-  /* ── Картинки от игроков ──
-     Игрок режет картинку на части (im) и шлёт их ведущему в отдельную тему («…/u») по отдельному соединению: так картинка
-     не занимает канал, по которому идут линии и движения, и не скачивается у остальных игроков. Ведущий подтверждает каждую
-     часть (ima); неподтверждённая часть шлётся снова. Получив всё, ведущий сохраняет картинку у себя и отвечает imok — после
-     этого игрок на неё ссылается (кладёт на доску, ставит портретом или жетоном). Остальным ведущий шлёт уменьшенную копию (th),
-     а чёткую они получают с сайта после сохранения журнала — как и с картинками самого ведущего. */
-  imRx: new Map(), imOk: new Set(), imAck: null, gadd: new Set(), shNew: new Set(), bulkC: [], inC: [],
-  /* Дополнительное соединение с сервером: только отправка (игрок) или подписка на тему картинок (ведущий) */
-  link(i, sub, onmsg) {
+  /* ── Картинки по прямой связи ──
+     У каждого, кто открыл сайт, есть второе соединение с каждым сервером — только для картинок (тема «…/u»). Картинка режется
+     на части (im) и идёт по нему, не занимая канал, по которому ходят линии, движения и «ведущий на связи».
+     Отправитель слышит свои части обратно с сервера и по этому судит, что они прошли; шлёт по три части сразу.
+     Игрок кладёт картинку: уменьшенная копия уходит ведущему вместе с действием и сразу показывается всем, а полная
+     картинка едет следом — и ведущему, и остальным игрокам. Получив её целиком, ведущий сохраняет картинку и отвечает imok.
+     Пока у ведущего только уменьшенная копия (part), журнал не сохраняется: иначе на сайт попала бы она.
+     Ведущий кладёт картинку: уменьшенная копия (th) и следом чёткая (до 1600 точек) — тем же путём.
+     После сохранения журнала все переходят на файл с сайта. */
+  imRx: new Map(), imOk: new Set(), imW: new Map(), part: new Map(), gadd: new Set(), shNew: new Set(), picC: [],
+  link(i, onmsg) {
     if (!window.WebSocket || !window.TextEncoder) return null;
     const te = new TextEncoder(), td = new TextDecoder(), topic = 'cjr/' + this.room() + '/u';
     const str = t => { const b = te.encode(t); return [b.length >> 8, b.length & 255, ...b]; };
@@ -4207,10 +4345,9 @@ const Live = {
     };
     let ws; try { ws = new WebSocket(this.MQTT[i], 'mqtt'); } catch (e) { return null; }
     ws.binaryType = 'arraybuffer';
-    const c = { ws, ok: false, was: false, at: Date.now(), pinged: Date.now(), onDown: null, send: text => ws.send(pkt(0x30, str(topic), te.encode(text))), ping: () => { c.pinged = Date.now(); try { ws.send(new Uint8Array([0xC0, 0])); } catch (e) {} } };
+    const c = { ws, ok: false, pinged: Date.now(), onDown: null, send: text => ws.send(pkt(0x30, str(topic), te.encode(text))), ping: () => { c.pinged = Date.now(); try { ws.send(new Uint8Array([0xC0, 0])); } catch (e) {} } };
     let buf = new Uint8Array(0);
     c.ready = new Promise(res => {
-      const up = () => { clearTimeout(t); c.ok = c.was = true; res(c); };
       const t = setTimeout(() => { if (!c.ok) { try { ws.close(); } catch (e) {} res(null); } }, 8000);
       ws.onopen = () => ws.send(pkt(0x10, [...str('MQTT'), 4, 2, 0, 60, ...str('cjb' + uid())]));
       ws.onmessage = e => {
@@ -4221,9 +4358,9 @@ const Live = {
           do { if (k >= buf.length) return; b = buf[k++]; len += (b & 127) * mul; mul *= 128; } while ((b & 128) && k < 5);
           if (buf.length < k + len) return;
           const head = buf[0], body = buf.slice(k, k + len), type = head >> 4; buf = buf.slice(k + len);
-          if (type === 2) { if (body[1] !== 0) { try { ws.close(); } catch (x) {} return res(null); } if (sub) ws.send(pkt(0x82, [0, 1, ...str(topic), 0])); else up(); }
-          else if (type === 9) up();
-          else if (type === 3 && onmsg) {
+          if (type === 2) { if (body[1] !== 0) { try { ws.close(); } catch (x) {} return res(null); } ws.send(pkt(0x82, [0, 1, ...str(topic), 0])); }
+          else if (type === 9) { clearTimeout(t); c.ok = true; res(c); }
+          else if (type === 3) {
             const tl = body[0] << 8 | body[1], from = 2 + tl + ((head >> 1) & 3 ? 2 : 0);
             let msg; try { msg = JSON.parse(td.decode(body.subarray(from))); } catch (x) { continue; }
             try { onmsg(msg); } catch (x) { console.error(x); }
@@ -4234,61 +4371,131 @@ const Live = {
     });
     return c;
   },
-  bulk(i) {                      // игрок: соединение для отправки картинок, открывается при первой надобности
-    let c = this.bulkC[i];
-    if (c) {
-      if ((c.ok && c.ws.readyState === 1) || c.ws.readyState === 0) return c.ready;
-      if (!c.was && Date.now() - c.at < 30000) return Promise.resolve(null);     // недавно не получилось — пока не пробуем
-    }
-    c = this.bulkC[i] = this.link(i, false); return c ? c.ready : Promise.resolve(null);
-  },
-  bulkIn(i) {                    // ведущий: соединение, по которому приходят картинки игроков; само восстанавливается
-    const again = () => setTimeout(() => this.bulkIn(i), 15000);
-    const c = this.link(i, true, m => { if (m && m.v === 2 && m.t === 'im' && !m.o && typeof m.u === 'string' && /^[a-z0-9]{1,40}$/.test(m.u) && m.u !== this.me && S) this.imin(m); });
-    this.inC[i] = c; if (!c) return again();
+  picOpen(i) {                   // соединение для картинок; само восстанавливается
+    const again = () => setTimeout(() => this.picOpen(i), 6000);
+    const c = this.link(i, m => this.imin(m));
+    this.picC[i] = c; if (!c) return again();
     c.onDown = again;
   },
-  imsend(id, data) { const run = () => this.imsend1(id, data); this.imQ = (this.imQ || Promise.resolve()).then(run, run); return this.imQ; },
-  async imsend1(id, data) {
-    const N = 32000, n = Math.ceil(data.length / N); if (!this.pub || n < 1 || n > 60) return false;
-    for (let i = 0; i < n; i++) {
-      const text = JSON.stringify({ t: 'im', img: id, i, n, d: data.slice(i * N, (i + 1) * N), v: 2, u: this.me, o: 0 });
-      let ok = false;
-      for (let a = 0; a < 5 && !ok; a++) {
-        if (!HOSTED || !this.conn.some(Boolean)) { this.imAck = null; return false; }
-        let outs = a < 3 ? (await Promise.all(this.MQTT.map((u, k) => this.bulk(k)))).filter(c => c && c.ok && c.ws.readyState === 1) : [];
-        if (!outs.length) outs = this.conn.filter(Boolean);        // отдельного соединения нет или оно не помогло — по обычному
-        const ack = new Promise(res => { this.imAck = { key: id + ':' + i, res }; });
-        let sent = 0; for (const c of outs) try { if (c.ws.bufferedAmount < 96000) { c.send(text, true); sent++; } } catch (e) {}
-        if (sent) ok = await Promise.race([ack.then(() => true), sleep(a ? 4000 : 2500).then(() => false)]); else await sleep(300);
-      }
-      if (!ok) { this.imAck = null; return false; }
-    }
-    this.imAck = null; return true;
+  /* Уменьшенная копия картинки: для показа «сразу» и для отправки чёткой, но не огромной */
+  async shrink(id, max, q) {
+    const im = new Image(); im.crossOrigin = 'anonymous';
+    await new Promise((res, rej) => { im.onload = res; im.onerror = rej; im.src = IMG[id]; });
+    const sc = Math.min(1, max / Math.max(im.naturalWidth, im.naturalHeight)), c = document.createElement('canvas'), g = c.getContext('2d');
+    c.width = Math.max(1, Math.round(im.naturalWidth * sc)); c.height = Math.max(1, Math.round(im.naturalHeight * sc)); g.drawImage(im, 0, 0, c.width, c.height);
+    let d = c.toDataURL('image/webp', q);
+    if (!d.startsWith('data:image/webp')) { g.fillStyle = '#1c1b26'; g.fillRect(0, 0, c.width, c.height); g.drawImage(im, 0, 0, c.width, c.height); d = c.toDataURL('image/jpeg', q); }
+    return d;
   },
-  /* Игрок: передать картинку ведущему и дождаться, пока он её сохранит у себя */
-  async imput(id) {
+  /* Отправка картинки по частям. Картинки идут по очереди, части одной картинки — по три сразу. */
+  imcast(id, data, prog, wide) { const run = () => this.imcast1(id, data, prog, wide); this.imQ = (this.imQ || Promise.resolve()).then(run, run); return this.imQ; },
+  async imcast1(id, data, prog, wide) {   // wide — слать ещё и по обычному соединению (вторая попытка: отдельное, видимо, не работает у ведущего)
+    const N = 32000, n = Math.ceil(data.length / N); if (!this.pub || n < 1 || n > 60) return false;
+    if (!this.picC.some(c => c && c.ok)) await Promise.race([Promise.all(this.picC.map(c => c ? c.ready : null)), sleep(2500)]);
+    let next = 0, done = 0, fail = false;
+    const good = c => c && c.ok && c.ws.readyState === 1 && c.ws.bufferedAmount < 200000;
+    const one = async i => {
+      const text = JSON.stringify({ t: 'im', img: id, i, n, d: data.slice(i * N, (i + 1) * N), v: 2, u: this.me, o: OWNER ? 1 : 0 }), key = id + ':' + i;
+      for (let a = 0; a < 4; a++) {
+        if (!this.conn.some(Boolean) || (READONLY && !HOSTED)) return false;
+        const got = new Promise(res => this.imW.set(key, () => res(true)));
+        let sent = 0;
+        for (const c of this.picC) if (good(c)) try { c.send(text); sent++; } catch (e) {}   // через оба сервера: кто-то из получателей может быть связан только с одним
+        if (!sent || a >= 2 || wide) for (const c of this.conn) if (c && c.ws.bufferedAmount < 200000) try { c.send(text, true); sent++; } catch (e) {}   // запасной путь — обычное соединение
+        const wait = async () => { for (let k = 0; k < (a ? 40 : 16); k++) { await sleep(100); if (this.imOk.has(id)) return true; } return false; };   // ведущий уже собрал картинку — эхо можно не ждать
+        const ok = sent ? await Promise.race([got, wait()]) : await sleep(400).then(() => false);
+        this.imW.delete(key);
+        if (ok) return true;
+      }
+      return false;
+    };
+    const work = async () => { while (!fail && next < n) { const i = next++; if (await one(i)) { done++; if (prog) prog(done, n); } else fail = true; } };
+    await Promise.all([work(), work(), work()]);   // пять и шесть сразу пробовали — быстрее не выходит: серверы придерживают поток после первых ~400 000 знаков
+    return !fail;
+  },
+  /* Игрок: передать картинку ведущему и дождаться, пока он её сохранит у себя. Если подтверждения нет, части шлются ещё раз. */
+  async imput(id, prog) {
     const data = IMG[id];
     if (!READONLY || !HOSTED || !this.pub || typeof data !== 'string' || data.length > 1500000 || !WIRE_IMG.test(data)) return false;
-    if (!(await this.imsend(id, data))) return false;
-    for (let k = 0; k < 60 && !this.imOk.has(id); k++) await sleep(100);
-    return this.imOk.has(id);
+    for (let pass = 0; pass < 3; pass++) {
+      if (!(await this.imcast(id, data, pass ? null : prog, pass > 0))) return false;
+      for (let k = 0; k < (pass ? 60 : 35) && !this.imOk.has(id); k++) await sleep(100);
+      if (this.imOk.has(id)) return true;
+    }
+    return false;
   },
-  imin(p) {                      // ведущий: пришла часть картинки
+  /* Ведущий: чёткая копия своей новой картинки — всем, не дожидаясь сохранения журнала */
+  async bcast(id, b = BV.b) {
+    if (!OWNER || !this.pubBoard(b) || !IMG[id] || (S.files && S.files[id] && !S.files[id].priv)) return;
+    try {
+      let d = IMG[id];
+      if (!WIRE_IMG.test(d) || d.length > 400000) d = await this.shrink(id, 1600, 0.78);
+      if (d.length > 400000) d = await this.shrink(id, 1360, 0.7);
+      if (d.length <= 700000 && WIRE_IMG.test(d) && this.pubBoard(b) && b.items.some(it => it.img === id)) await this.imcast(id, d);
+    } catch (e) { /* без чёткой копии игроки увидят уменьшенную, а настоящую — после сохранения */ }
+  },
+  imin(p) {                      // пришла часть картинки (или вернулась своя)
+    if (!p || p.v !== 2 || p.t !== 'im' || typeof p.u !== 'string' || !S) return;
     const id = p.img, n = +p.n, i = +p.i;
-    if (!OWNER || typeof id !== 'string' || !/^[A-Za-z0-9_-]{6,40}$/.test(id) || typeof p.d !== 'string' || p.d.length > 34000 || !Number.isInteger(n) || !Number.isInteger(i) || n < 1 || n > 60 || i < 0 || i >= n) return;
-    const ack = () => this.bmsg({ t: 'ima', img: id, i });
-    if (IMKEEP.has(id)) { ack(); if (i === n - 1) this.bmsg({ t: 'imok', img: id }); return; }
-    if (IMG[id]) return;
+    if (typeof id !== 'string' || !/^[A-Za-z0-9_-]{6,40}$/.test(id) || !Number.isInteger(n) || !Number.isInteger(i) || n < 1 || n > 60 || i < 0 || i >= n) return;
+    if (p.u === this.me) { const w = this.imW.get(id + ':' + i); if (w) w(); return; }
+    if (!/^[a-z0-9]{1,40}$/.test(p.u) || typeof p.d !== 'string' || p.d.length > 34000 || (OWNER ? p.o : !READONLY)) return;
+    const have = IMG[id];
+    if (OWNER) { if (have && !this.part.has(id)) { if (i === n - 1) this.bmsg({ t: 'imok', img: id }); return; } }   // уже есть целиком: игрок, видимо, не услышал подтверждение
+    else if (have && !(this.thumbs.has(id) && have.startsWith('data:') && have.length < 130000)) return;               // у игрока заменяется только уменьшенная копия
     const now = Date.now(); for (const [k, r] of this.imRx) if (now - r.at > 60000) this.imRx.delete(k);
     let r = this.imRx.get(id);
     if (!r) { if (this.imRx.size >= 8) return; r = { u: p.u, n, parts: new Array(n).fill(null), got: 0, at: now }; this.imRx.set(id, r); }
     if (r.u !== p.u || r.n !== n) return;
-    if (r.parts[i] === null) { r.parts[i] = p.d; r.got++; } r.at = now; ack();
-    if (r.got < n) return;
+    if (r.parts[i] === null) { r.parts[i] = p.d; r.got++; } r.at = now;
+    if (r.got < n) { if (OWNER && !r.timer) r.timer = setTimeout(() => { r.timer = 0; this.imcheck(); }, 450); return; }
     this.imRx.delete(id); const d = r.parts.join('');
     if (d.length > 1500000 || !WIRE_IMG.test(d)) return;
-    IMG[id] = d; IMKEEP.set(id, now); Store.put('img', id, d); this.bmsg({ t: 'imok', img: id });
+    if (OWNER) {
+      const was = this.part.delete(id);
+      IMG[id] = d; IMKEEP.set(id, now); Store.put('img', id, d); this.bmsg({ t: 'imok', img: id });
+      if (was) { imgShown(id); save(5000); }
+      return;
+    }
+    IMG[id] = d; this.thumbs.add(id); imgShown(id);
+  },
+  /* Ведущий: часть картинки потерялась в пути — просим у игрока только её, а не всю картинку заново */
+  imcheck() {
+    if (!OWNER) return; const now = Date.now();
+    for (const [id, r] of this.imRx) {
+      if (r.got >= r.n) continue;
+      if (now - r.at < 800 || now - (r.asked || 0) < 1400) { if (!r.timer && (r.asks || 0) < 8) r.timer = setTimeout(() => { r.timer = 0; this.imcheck(); }, 450); continue; }
+      if ((r.asks || 0) >= 8) continue;
+      const miss = []; for (let i = 0; i < r.n && miss.length < 24; i++) if (r.parts[i] === null) miss.push(i);
+      r.asked = now; r.asks = (r.asks || 0) + 1; this.bmsg({ t: 'imneed', img: id, to: r.u, n: r.n, miss });
+      if (!r.timer) r.timer = setTimeout(() => { r.timer = 0; this.imcheck(); }, 1450);
+    }
+  },
+  imneed(p) {                    // игрок: ведущему не хватает частей — шлём их ещё раз всеми путями
+    const d = typeof p.img === 'string' ? IMG[p.img] : null, N = 32000, n = +p.n;
+    if (!p.o || p.to !== this.me || typeof d !== 'string' || !Array.isArray(p.miss) || Math.ceil(d.length / N) !== n) return;
+    const few = p.miss.length <= 4;                                  // много частей в обычный канал не пускаем: он для линий и движений
+    for (const i of p.miss.slice(0, 24)) {
+      if (!Number.isInteger(i) || i < 0 || i >= n) continue;
+      const text = JSON.stringify({ t: 'im', img: p.img, i, n, d: d.slice(i * N, (i + 1) * N), v: 2, u: this.me, o: 0 });
+      let sent = 0;
+      for (const c of this.picC) if (c && c.ok && c.ws.readyState === 1) try { c.send(text); sent++; } catch (e) {}
+      if (few || !sent) for (const c of this.conn) if (c) try { c.send(text, true); } catch (e) {}
+    }
+  },
+  /* Ведущий: картинки игроков, от которых пока есть только уменьшенная копия */
+  partBusy() {
+    const now = Date.now();
+    for (const [id, t] of this.part) {
+      const used = S.boards.some(b => b.items.some(it => it.img === id));
+      if (used && now - t < 45000) continue;
+      this.part.delete(id); delete IMG[id];
+      if (used) for (const b of S.boards) {            // полная картинка так и не пришла — убираем её с доски
+        const k = b.items.length; b.items = b.items.filter(it => it.img !== id); if (b.items.length === k) continue;
+        b.updatedAt = now; if (this.onBoard(b) && BV.b === b) { if (BV.sel && !b.items.some(it => it.id === BV.sel)) BV.sel = null; boardDraw(); } this.bstate(b);
+      }
+    }
+    return this.part.size > 0;
   },
   /* ── Персонажи в прямом эфире: игрок шлёт ведущему открытые поля, ведущий рассылает персонажа (без скрытого) ── */
   chDirty: new Map(), chAt: {}, chkeep: {}, cfDirty: new Map(), cfAt: {}, cfkeep: {},
@@ -4966,6 +5173,11 @@ const ACT = {
   'share-close': () => closeShare(),
   'share-go': () => downloadShared(),
   'b-tool': el => setTool(el.dataset.v),
+  'bt-font': el => { if (BT) { BT.f = el.dataset.v; btPaint(); $('#bt-text').focus(); } },
+  'bt-color': el => { if (BT) { BT.c = el.dataset.v; btPaint(); $('#bt-text').focus(); } },
+  'bt-save': () => btSave(),
+  'bt-del': () => { const st = BT, it = st && BV.b && BV.b.items.find(x => x.id === st.id); BT = null; closeDlg(); if (!it || READONLY) return; boardSnap(); BV.b.items = BV.b.items.filter(x => x !== it); BV.sel = null; boardDraw(); boardTouch(); },
+  'b-text-edit': () => { const it = selItem(); if (it && it.txt !== undefined) openBoardText(it); },
   'b-color': el => { BV.color = el.dataset.v; $$('.b-color').forEach(b => b.classList.toggle('on', b === el)); },
   'b-size': el => { BV.size = +el.dataset.v; $$('.b-size').forEach(b => b.classList.toggle('on', b === el)); },
   'b-add-menu': el => openMenu(el, `<div class="menu-label">Добавить картинку</div><button data-act="b-upload">${ic('upload')}С компьютера</button><button data-act="b-journal">${ic('book')}Из журнала кампании</button>`),
