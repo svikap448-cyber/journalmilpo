@@ -1431,6 +1431,8 @@ html.hack-tear { filter: url(#hack-tear); }
 }
 [data-theme="cyber"] body::before { content: ""; position: fixed; inset: 0; z-index: 240; pointer-events: none; background: radial-gradient(120% 95% at 50% 48%, rgba(0,0,0,0) 60%, rgba(0,0,0,.5)); }
 [data-theme="cyber"] body::after { content: ""; position: fixed; inset: 0; z-index: 241; pointer-events: none; background: repeating-linear-gradient(180deg, rgba(0,0,0,0) 0 3px, rgba(0,0,0,.075) 3px 4px); }
+/* На странице доски полос и затемнения по краям нет: они ложились поверх картинок (просьба 114). */
+[data-theme="cyber"] body:has(#board)::before, [data-theme="cyber"] body:has(#board)::after { display: none; }
 [data-theme="cyber"] :is(h1, h2, h3) { font-weight: 600; letter-spacing: .04em; text-transform: uppercase; }
 [data-theme="cyber"] h1 { font-size: 37px; text-shadow: 2px 0 0 rgba(255,60,90,.5), -2px 0 0 rgba(94,246,255,.45); }
 [data-theme="cyber"] h2 { font-size: 21px; } [data-theme="cyber"] h3 { font-size: 17px; }
@@ -1734,6 +1736,8 @@ const nav = p => `href="#/${p}" data-nav="${p}"`;
 /* ═════════ Хранилище ═════════ */
 let S = null;          // данные
 let IMG = {};          // id картинки → data URL
+const IMKEEP = new Map();   // картинки, только что присланные игроками: их нельзя чистить, пока на них не сослались
+const WIRE_IMG = /^data:image\/(webp|jpeg|png);base64,[A-Za-z0-9+/=]+$/;   // в таком виде картинка ходит по прямой связи
 let MEM = false;       // true, если браузер не даёт сохранять (режим предпросмотра)
 let READONLY = false;  // true в файле «для других»: только чтение
 let SHARED_AT = null;
@@ -1872,7 +1876,9 @@ function imageSet(key) {
   return e ? entityImages(type, e).map(i => ({ id: i, cap: titleOf(type, e) })) : [];
 }
 function gcImages() {
-  const used = usedImages(S);
+  if (READONLY) return;
+  const used = usedImages(S), now = Date.now();
+  for (const [id, t] of IMKEEP) { if (now - t < 180000) used.add(id); else IMKEEP.delete(id); }
   for (const u of BV.undo) for (const m of u.matchAll(/"img":"([^"]+)"/g)) used.add(m[1]);   // картинки, которые ещё можно вернуть отменой
   for (const id of Object.keys(IMG)) if (!used.has(id)) { delete IMG[id]; Store.del('img', id); }
 }
@@ -1948,7 +1954,7 @@ const threadPill = t => `<span class="pill ${t.status === 'open' ? 'open' : t.st
 const empty = (icon, title, text, btn) => READONLY ? `<div class="empty">${ic(icon)}<h3>Здесь пока пусто</h3><p>В этом разделе ещё ничего не записано.</p></div>` : `<div class="empty">${ic(icon)}<h3>${title}</h3><p>${text}</p>${btn || ''}</div>`;
 const lock = e => e.secret ? `<span class="lock" title="Не попадёт в версию для других">${ic('lock')}</span>` : '';
 const lockPill = e => e.secret ? `<span class="pill plain">${ic('lock')}Скрыто от других</span>` : '';
-const newBtn = (type, label, cls = 'primary') => READONLY ? '' : `<button class="btn ${cls}" data-act="new" data-type="${type}">${ic('plus')}${label || TYPES[type].newLabel}</button>`;
+const newBtn = (type, label, cls = 'primary') => READONLY ? (ONLINE && type === 'characters' ? `<button class="btn ${cls}" data-act="ch-new" title="Создать персонажа. Работает, пока ведущий на связи">${ic('plus')}${label || TYPES[type].newLabel}</button>` : '') : `<button class="btn ${cls}" data-act="new" data-type="${type}">${ic('plus')}${label || TYPES[type].newLabel}</button>`;
 function shots(key, items, withCap) {
   return `<div class="grid shots">${items.map((it, i) => `<button class="shot" data-act="zoom" data-set="${key}" data-i="${i}"><img src="${IMG[it.id]}" alt="" loading="lazy">${withCap ? `<span class="cap">${esc(it.cap)}</span>` : ''}</button>`).join('')}</div>`;
 }
@@ -2156,7 +2162,7 @@ function viewCharacter(c) {
     </aside>
     <div>
       <div class="page-head"><div><div class="eyebrow">${esc(c.role || (c.kind === 'pc' ? 'Персонаж игрока' : 'НИП'))}</div><h1>${esc(c.name)}</h1>${c.secret ? `<div class="sub">${lockPill(c)}</div>` : ''}</div>
-        ${READONLY ? '' : `<div class="actions"><button class="btn" data-act="edit" data-type="characters" data-id="${c.id}">${ic('edit')}Изменить</button></div>`}</div>
+        ${READONLY ? (ONLINE ? `<div class="actions"><button class="btn" data-act="ch-edit" data-id="${esc(c.id)}" title="Изменить персонажа. Работает, пока ведущий на связи">${ic('edit')}Изменить</button></div>` : '') : `<div class="actions"><button class="btn" data-act="edit" data-type="characters" data-id="${c.id}">${ic('edit')}Изменить</button></div>`}</div>
       ${proseOr(c.body, c.id, 'Описания пока нет.')}
       ${c.notes && c.notes.trim() ? `<div class="section"><h2>Личные заметки и догадки</h2><div class="prose sm">${rich(c.notes, c.id)}</div></div>` : ''}
       ${relSection(c)}
@@ -2367,6 +2373,8 @@ function toast(msg, ms = 2200) {
   const t = document.createElement('div'); t.className = 'toast'; t.textContent = msg;
   $('#toasts').append(t); setTimeout(() => t.remove(), ms);
 }
+/* Сообщение, которое висит, пока идёт дело; убирается вызовом .remove() (и само — через 40 секунд) */
+function toastHold(msg) { const t = document.createElement('div'); t.className = 'toast'; t.textContent = msg; $('#toasts').append(t); setTimeout(() => t.remove(), 40000); return t; }
 let menuEl = null;
 function closeMenu() { if (menuEl) { menuEl.remove(); menuEl = null; } }
 function openMenu(anchor, html, alignRight) {
@@ -2426,17 +2434,20 @@ function lbStep(d) { if (!LB) return; LB.i = (LB.i + d + LB.items.length) % LB.i
 
 /* ═════════ Формы ═════════ */
 let F = null;
+const GUEST_CH = ['name', 'kind', 'role', 'player', 'status', 'body', 'portrait'];   // что в персонаже может менять игрок
+const formFields = () => F && F.guest ? FIELDS[F.type].filter(f => GUEST_CH.includes(f.k)) : FIELDS[F.type];
 function openForm(type, id, preset) {
   closeMenu();
+  if (READONLY && type !== 'characters') return;
   const ent = id ? byId(type, id) : null;
   const draft = ent ? JSON.parse(JSON.stringify(ent)) : Object.assign(DEFAULTS[type](), preset || {});
-  F = { type, draft, isNew: !ent, dirty: false };
+  F = { type, draft, isNew: !ent, dirty: false, guest: READONLY, fresh: new Set() };
   const title = type === 'campaigns' ? (ent ? 'Настройки кампании' : 'Новая кампания') : (ent ? TYPES[type].editLabel : TYPES[type].newLabel);
   const el = document.createElement('div'); el.className = 'backdrop'; el.id = 'form';
   el.innerHTML = `<div class="modal" role="dialog" aria-modal="true" aria-label="${title}">
     <header><h2>${title}</h2><button class="icon-btn" data-act="form-close" aria-label="Закрыть">${ic('x')}</button></header>
-    <div class="modal-body">${FIELDS[type].map(f => `<div class="f ${f.span ? 's' + f.span : ''}" data-field="${f.k}">${fieldHtml(f)}</div>`).join('')}</div>
-    <footer>${ent ? `<button class="btn danger" data-act="form-delete">${ic('trash')}Удалить</button>` : ''}<span class="spacer"></span><span class="hint">Ctrl + Enter — сохранить</span><button class="btn ghost" data-act="form-close">Отмена</button><button class="btn primary" data-act="form-save">Сохранить</button></footer></div>`;
+    <div class="modal-body">${formFields().map(f => `<div class="f ${f.span ? 's' + f.span : ''}" data-field="${f.k}">${fieldHtml(f)}</div>`).join('')}</div>
+    <footer>${ent && !READONLY ? `<button class="btn danger" data-act="form-delete">${ic('trash')}Удалить</button>` : ''}<span class="spacer"></span><span class="hint">Ctrl + Enter — сохранить</span><button class="btn ghost" data-act="form-close">Отмена</button><button class="btn primary" data-act="form-save">Сохранить</button></footer></div>`;
   document.body.append(el);
   const first = $('.inp', el); if (first && !ent) first.focus();
 }
@@ -2469,7 +2480,7 @@ function fieldHtml(f) {
   }
   return '';
 }
-const fieldDef = k => FIELDS[F.type].find(f => f.k === k);
+const fieldDef = k => formFields().find(f => f.k === k);
 function refreshField(k) { const el = $(`#form [data-field="${k}"]`); if (el) el.innerHTML = fieldHtml(fieldDef(k)); }
 async function closeForm(force) {
   if (!F) return;
@@ -2477,6 +2488,7 @@ async function closeForm(force) {
   F = null; const el = $('#form'); if (el) el.remove(); gcImages();
 }
 function saveForm() {
+  if (F.guest) return saveGuestChar();
   const { type, draft, isNew } = F;
   const req = FIELDS[type].find(f => f.req);
   if (req && !String(draft[req.k] || '').trim()) { toast(`Заполните поле «${req.label}»`); const i = $(`#form [data-k="${req.k}"]`); if (i) i.focus(); return; }
@@ -2492,10 +2504,12 @@ function saveForm() {
     if (type === 'campaigns') S.settings.campaign = draft.id;
   } else Object.assign(byId(type, draft.id), draft);
   closeForm(true); save();
+  if (type === 'characters') Live.chpub(byId(type, draft.id));
   if (type === 'campaigns') go('home'); else if (isNew) go(type + '/' + draft.id); else render();
   toast('Сохранено');
 }
 async function deleteFromForm() {
+  if (F.guest) return;
   const { type, draft } = F;
   if (type === 'campaigns') { await closeForm(true); return deleteCampaign(); }
   if (!(await confirmDialog(`Удалить «${esc(titleOf(type, draft))}»? Отменить это будет нельзя.`))) return;
@@ -2543,13 +2557,82 @@ function processImage(file, MAX = 1600, quality = 0.86) {
     fr.readAsDataURL(file);
   });
 }
+/* Картинка игрока: уменьшенная и в том виде, в котором её можно передать ведущему по прямой связи */
+function reencode(src, MAX, q) {
+  return new Promise((res, rej) => {
+    const im = new Image(); im.onerror = () => rej(new Error('decode'));
+    im.onload = () => {
+      const sc = Math.min(1, MAX / Math.max(im.naturalWidth, im.naturalHeight)), c = document.createElement('canvas'), g = c.getContext('2d');
+      c.width = Math.max(1, Math.round(im.naturalWidth * sc)); c.height = Math.max(1, Math.round(im.naturalHeight * sc));
+      g.fillStyle = '#1c1b26'; g.fillRect(0, 0, c.width, c.height); g.drawImage(im, 0, 0, c.width, c.height); res(c.toDataURL('image/jpeg', q));
+    };
+    im.src = src;
+  });
+}
+async function wireImage(file, MAX, q) {
+  let d = await processImage(file, MAX, q);
+  if (!WIRE_IMG.test(d) || d.length > 900000) d = await reencode(d, Math.min(MAX, 1500), 0.78);
+  if (d.length > 900000) d = await reencode(d, 1200, 0.68);
+  return d;
+}
+/* Игрок сохраняет персонажа: портрет уходит ведущему по частям, потом — сами поля. Запись делает вкладка ведущего. */
+async function saveGuestChar() {
+  const f0 = F, d = f0.draft, name = String(d.name || '').trim();
+  if (!name) { toast('Заполните поле «Имя»'); const i = $('#form [data-k="name"]'); if (i) i.focus(); return; }
+  if (f0.busy) return;
+  if (!HOSTED) return toast('Нет связи с ведущим. Окно можно не закрывать: когда ведущий вернётся, нажмите «Сохранить» ещё раз.', 5500);
+  const btn = $('#form [data-act="form-save"]');
+  if (d.portrait && f0.fresh.has(d.portrait)) {
+    f0.busy = true; if (btn) { btn.disabled = true; btn.textContent = 'Отправляю портрет…'; }
+    const ok = await Live.imput(d.portrait);
+    f0.busy = false; if (F !== f0) return;
+    if (btn) { btn.disabled = false; btn.textContent = 'Сохранить'; }
+    if (!ok) return toast('Портрет не дошёл до ведущего. Нажмите «Сохранить» ещё раз.', 5000);
+    f0.fresh.delete(d.portrait);
+  }
+  const id = f0.isNew ? uid() : d.id;
+  if (!Live.chop(id, { name, kind: d.kind, role: d.role, player: d.player, status: d.status, body: d.body, portrait: d.portrait || null }, f0.isNew)) return;
+  closeForm(true);
+  if (f0.isNew && route.view !== 'board') go('characters/' + id); else chShown(S.characters.find(x => x.id === id));
+  toast(f0.isNew ? 'Персонаж создан' : 'Сохранено');
+}
+/* Поля персонажа, которые ходят по прямой связи: только открытое, без личных заметок ведущего */
+function cleanChar(f) {
+  if (!f || typeof f !== 'object') return null;
+  const line = (v, n) => String(v == null ? '' : v).slice(0, n).replace(/\s+/g, ' ').trim(), name = line(f.name, 80);
+  if (!name) return null;
+  return { name, kind: f.kind === 'pc' ? 'pc' : 'npc', role: line(f.role, 160), player: line(f.player, 60), status: Object.prototype.hasOwnProperty.call(CSTATUS, f.status) ? f.status : '',
+    body: String(f.body == null ? '' : f.body).slice(0, 12000), portrait: typeof f.portrait === 'string' && /^[A-Za-z0-9_-]{1,60}$/.test(f.portrait) ? f.portrait : null };
+}
+function chPut(id, campId, f) {
+  let c = S.characters.find(x => x.id === id);
+  if (!c) { c = Object.assign(DEFAULTS.characters(), { id, campaignId: campId, createdAt: Date.now() }); S.characters.push(c); }
+  Object.assign(c, f); c.updatedAt = Date.now(); return c;
+}
+/* Персонаж изменился по прямой связи: показываем там, где он сейчас виден */
+function chShown(c) {
+  if (c && c.campaignId !== cid()) return;
+  if ($('#board')) { railRender(); if (sheetTyping()) $$('.sh-win').forEach(w => { w.dataset.stale = '1'; }); else winsRender(); return; }
+  if (F || $('.backdrop') || LB) return;
+  if (route.view === 'characters' || route.view === 'home') renderView();
+  renderSidebar();
+}
+function imgShown(id) {
+  if ($('#board')) {
+    if (BV.b && BV.b.items.some(it => it.img === id)) boardDraw();
+    const c = campaign(); if ((c && c.fateImg === id) || S.characters.some(x => x.portrait === id)) { railRender(); if (!sheetTyping()) winsRender(); }
+    return;
+  }
+  if (!F && !$('.backdrop') && !LB && route.view === 'characters' && S.characters.some(x => x.portrait === id)) renderView();
+}
+const guestCan = () => READONLY && !!ONLINE && (HOSTED || (toast('Создавать и менять персонажей можно, пока ведущий на связи', 3800), false));
 async function addImages(k, files) {
   if (!F) return; const f = fieldDef(k); if (!f) return;
   files = files.filter(x => x.type.startsWith('image/')); if (!files.length) return;
   for (const file of (f.type === 'image' ? files.slice(0, 1) : files)) {
     try {
-      const data = await processImage(file); if (!F) return;
-      const id = uid(); IMG[id] = data; Store.put('img', id, data);
+      const data = READONLY ? await wireImage(file, 1000, 0.86) : await processImage(file); if (!F) return;
+      const id = uid(); IMG[id] = data; if (READONLY) F.fresh.add(id); else Store.put('img', id, data);
       if (f.type === 'image') F.draft[k] = id; else (F.draft[k] = F.draft[k] || []).push(id);
     } catch (e) { toast('Не получилось прочитать картинку «' + file.name + '»'); }
   }
@@ -2698,7 +2781,7 @@ function filterState(src, o = {}) {
   st.gear.forEach(x => { x.owners = (x.owners || []).filter(id => keep.characters.has(id)); });
   st.characters.forEach(x => { x.relations = (x.relations || []).filter(r => r && keep.characters.has(r.to)); x.places = (x.places || []).filter(id => keep.locations.has(id)); });
   if (!o.charNotes) st.characters.forEach(x => { x.notes = ''; });
-  st.characters.forEach(x => { if (x.sheet && x.sheet.secret) delete x.sheet; });
+  st.characters.forEach(x => { if (x.sheet && x.sheet.secret) { delete x.sheet; x.sheetHidden = true; } else delete x.sheetHidden; });   // сам лист скрыт, остаётся только пометка, что он есть
   st.boards = (src.boards || []).filter(b => cids.has(b.campaignId) && !b.secret).map(clone);
   return st;
 }
@@ -2724,7 +2807,7 @@ const Sync = {
     const now = Date.now(); if (!this.since) this.since = now;
     if (delay <= 1500) this.quick = true;
     const at = this.quick ? now + 1500 : Math.max(Math.min(now + delay, this.since + 45000), (this.last || 0) + 15000);
-    clearTimeout(this.timer); this.timer = setTimeout(() => this.run(), at - now);
+    clearTimeout(this.timer); this.at = at; this.timer = setTimeout(() => this.run(), at - now);
   },
   async run(force) {
     clearTimeout(this.timer);
@@ -2867,7 +2950,7 @@ async function loadViewer(sha) {
 /* Уменьшенная копия картинки заменяется настоящей, когда та загрузится */
 function swapThumb(id, url, n = 0) {
   const im = new Image();
-  im.onload = () => { Live.thumbs.delete(id); if (IMG[id] && IMG[id].startsWith('data:')) { IMG[id] = url; if ($('#board') && BV.b && !BV.drag) boardDraw(); } };
+  im.onload = () => { Live.thumbs.delete(id); if (IMG[id] && IMG[id].startsWith('data:')) { IMG[id] = url; if (!BV.drag) imgShown(id); } };
   im.onerror = () => { if (n < 4) setTimeout(() => swapThumb(id, url, n + 1), 3000); };
   im.src = url;
 }
@@ -3034,7 +3117,7 @@ function publishDone(r) {
    Записывать в журнал может только ведущий. Поэтому правки игрока уходят ведущему по прямой связи, его браузер применяет их,
    рассылает всем и сохраняет. Пока сайт у ведущего закрыт, игроки только смотрят. */
 let HOSTED = false;                                   // игрок: ведущий сейчас на связи
-const GUEST_ACTS = new Set(['b-tool', 'b-color', 'b-size', 'b-undo', 'sh-edit', 'sh-add-row', 'sh-del-row', 'sh-add-block', 'sh-del-block', 'sh-move-block', 'sh-numbered', 'sh-box', 'sh-box-n', 'sh-step', 'fp-step', 'fp-make', 'pf-add', 'sh-stack']);
+const GUEST_ACTS = new Set(['b-tool', 'b-color', 'b-size', 'b-undo', 'b-upload', 'sh-menu', 'sh-tpl', 'fp-img', 'fp-img-clear', 'sh-edit', 'sh-add-row', 'sh-del-row', 'sh-add-block', 'sh-del-block', 'sh-move-block', 'sh-numbered', 'sh-box', 'sh-box-n', 'sh-step', 'fp-step', 'fp-make', 'pf-add', 'sh-stack']);
 const boardRO = () => READONLY && !(HOSTED && !!BV.b && S.boards.includes(BV.b));
 const sheetRO = () => READONLY && !HOSTED;
 const sheetTyping = () => { const a = document.activeElement; return !!a && !!a.dataset && !!a.dataset.sf; };
@@ -3049,6 +3132,14 @@ function applyOp(b, op) {
     const have = new Set(b.strokes.map(shash)); let ch = false;
     for (const raw of (Array.isArray(op.ss) ? op.ss.slice(0, 400) : [])) { const st = cleanStroke(raw); if (st && !have.has(shash(st))) { b.strokes.push(st); have.add(shash(st)); ch = true; } }
     return ch;
+  }
+  if (op.k === 'add') {                               // игрок положил картинку; сама картинка к этому времени уже у ведущего
+    const n = cleanItem(op.it); if (!n || !IMG[n.img] || b.items.length >= 600 || b.items.some(x => x.id === n.id)) return false;
+    delete n.lock; b.items.push(n); return true;
+  }
+  if (op.k === 'del') {                               // игрок отменил свою только что положенную картинку
+    const i = b.items.findIndex(x => x.id === (op.it && op.it.id)); if (i < 0 || b.items[i].lock) return false;
+    b.items.splice(i, 1); return true;
   }
   if (op.k === 'erase') {
     const gone = new Set(Array.isArray(op.h) ? op.h : []), left = b.strokes.filter(st => !gone.has(shash(st)));
@@ -3116,7 +3207,7 @@ function viewBoard() {
       <rect id="bgrid" width="100%" height="100%" fill="url(#bdots)"/>
       <g id="bworld"><g id="bitems"></g><g id="bstrokes"></g><g id="bsel"></g></g>
     </svg>
-    <div class="b-empty" id="b-empty" hidden>${READONLY ? `<h3>Доска пока пустая</h3><p>Когда ведущий что-нибудь на неё добавит, это появится здесь. Кубики можно бросать уже сейчас.</p>` : `<h3>Это доска</h3><p>Перетащите сюда картинку, вставьте её из буфера (Ctrl+V) или нажмите кнопку с картинкой слева. Картинки можно двигать и растягивать, поверх — рисовать маркером. Колесо мыши приближает, пустое место тянется, как лист.</p>`}</div>
+    <div class="b-empty" id="b-empty" hidden>${READONLY ? `<h3>Доска пока пустая</h3><p>Когда ведущий что-нибудь на неё добавит, это появится здесь. Пока ведущий на связи, картинку можно добавить и самому: кнопкой слева, перетащив её сюда или вставив из буфера (Ctrl+V). Кубики можно бросать уже сейчас.</p>` : `<h3>Это доска</h3><p>Перетащите сюда картинку, вставьте её из буфера (Ctrl+V) или нажмите кнопку с картинкой слева. Картинки можно двигать и растягивать, поверх — рисовать маркером. Колесо мыши приближает, пустое место тянется, как лист.</p>`}</div>
     <div class="dice-stage" id="dice-stage"></div>
     <div id="b-wins"></div>
     ${railHtml()}
@@ -3129,6 +3220,7 @@ function viewBoard() {
     ${gtool ? `<div class="b-panel b-tools" id="b-gtools" ${ro ? 'hidden' : ''}>
       ${tool('move', 'cursor', 'Двигать картинки и лист', 'V')}${tool('pen', 'pen', 'Маркер', 'M')}${tool('erase', 'eraser', 'Ластик: стирает линии', 'E')}
       <i class="b-sep"></i>
+      <button class="b-btn" data-act="b-upload" title="Добавить картинку с компьютера. Ещё её можно перетащить на доску или вставить из буфера (Ctrl+V)" aria-label="Добавить картинку">${ic('image')}</button>
       <button class="b-btn" data-act="b-undo" title="Отменить моё последнее действие (Ctrl+Z)" aria-label="Отменить">${ic('undo')}</button>
     </div>` : ''}
     ${READONLY ? '' : `<div class="b-panel b-tools">
@@ -3376,12 +3468,35 @@ async function boardPlace(imgId, at, n = 0) {
   const size = await imgSize(IMG[imgId]), r = boardRect(), c = BV.cam;
   const sc = Math.min(r.width * 0.6 / c.k / size.w, r.height * 0.6 / c.k / size.h, 1 / c.k);
   const w = r1(size.w * sc), h = r1(size.h * sc), [cx, cy] = at || [(r.width / 2 - c.x) / c.k, (r.height / 2 - c.y) / c.k];
-  boardSnap();
   const it = { id: uid(), img: imgId, x: r1(cx - w / 2 + n * 28 / c.k), y: r1(cy - h / 2 + n * 28 / c.k), w, h };
+  if (READONLY) {                              // игрок: картинка встаёт у него сразу, ведущему уходит действие
+    if (Live.gop({ k: 'add', b: BV.b.id, it }, { k: 'del', b: BV.b.id, it: { id: it.id } })) { BV.sel = it.id; setTool('move'); boardDraw(); }
+    return;
+  }
+  boardSnap();
   BV.b.items.push(it); BV.sel = it.id; setTool('move'); boardDraw(); boardTouch(); Live.bthumb(imgId);
 }
+/* Игрок добавляет картинку: она уменьшается, по частям уходит ведущему, и после его подтверждения встаёт на доску */
+async function boardGuestFiles(files, at) {
+  files = files.filter(f => f.type.startsWith('image/')); if (!files.length || !ONLINE) return;
+  if (boardRO()) return toast('Картинки можно добавлять, пока ведущий на связи', 3800);
+  if (BV.sending) return toast('Предыдущая картинка ещё отправляется');
+  if (files.length > 4) { files = files.slice(0, 4); toast('За один раз — не больше четырёх картинок', 3000); }
+  BV.sending = true; let n = 0;
+  try {
+    for (const file of files) {
+      let data; try { data = await wireImage(file, 1600, 0.82); } catch (e) { toast('Не получилось прочитать картинку «' + file.name + '»'); continue; }
+      const id = uid(); IMG[id] = data; Live.thumbs.add(id);
+      const note = toastHold('Отправляю картинку ведущему…'), ok = await Live.imput(id); note.remove();
+      if (!ok) { delete IMG[id]; Live.thumbs.delete(id); toast('Картинка не дошла до ведущего. Проверьте связь и попробуйте ещё раз.', 5000); break; }
+      if (!$('#board') || boardRO()) { toast('Связь с ведущим пропала — картинка не добавлена', 4000); break; }
+      await boardPlace(id, at, n++); toast('Картинка добавлена', 1600);
+    }
+  } finally { BV.sending = false; }
+}
 async function boardAddFiles(files, at) {
-  if (READONLY || !$('#board')) return;
+  if (!$('#board')) return;
+  if (READONLY) return boardGuestFiles(files, at);
   files = files.filter(f => f.type.startsWith('image/')); if (!files.length) return;
   let n = 0;
   for (const file of files) {
@@ -3746,12 +3861,35 @@ const Live = {
     this.started = Date.now(); this.sse(); this.MQTT.forEach((u, i) => this.mqtt(i)); setTimeout(() => this.paint(), 12500);
     if (OWNER) {
       for (const b of S.boards) for (const st of b.strokes) this.sent.add(shash(st));   // эти линии уже сохранены, зрители получат их с журналом
-      setInterval(() => this.bmsg({ t: 'host' }), 8000);                                   // «ведущий на связи»: пока это слышно, игроки могут менять доску и листы
+      setInterval(() => this.bmsg({ t: 'host' }), 8000);
+      /* Свёрнутую или закрытую другим окном вкладку браузер притормаживает, а то и усыпляет. Чтобы игроки при этом не теряли ведущего:
+         счёт времени ведёт отдельный поток, который браузер не тормозит, а «замок» просит браузер не усыплять вкладку. */
+      try {
+        const w = new Worker(URL.createObjectURL(new Blob(['setInterval(function () { postMessage(0); }, 1000);'], { type: 'text/javascript' })));
+        w.onmessage = () => this.beat(); this.worker = w;
+      } catch (e) { /* без отдельного потока всё работает как раньше */ }
+      try { if (navigator.locks && navigator.locks.request) navigator.locks.request('cj-host-' + this.room(), { mode: 'shared' }, () => new Promise(() => {})).catch(() => {}); } catch (e) {}
+      document.addEventListener('visibilitychange', () => { if (!document.hidden && this.pub) this.bhello(); });
+      this.MQTT.forEach((u, i) => this.bulkIn(i));                                         // сюда игроки присылают картинки
+      setInterval(() => { for (const c of this.inC) if (c && c.ok) c.ping(); }, 30000);                                   // «ведущий на связи»: пока это слышно, игроки могут менять доску и листы
       window.addEventListener('pagehide', () => this.bmsg({ t: 'bye' }));
     } else {
       setInterval(() => this.hostCheck(), 4000);
       document.addEventListener('visibilitychange', () => { if (!document.hidden && HOSTED) { this.hostAt = Math.max(this.hostAt, Date.now() - 12000); this.bmsg({ t: 'ping' }); } });
     }
+  },
+  /* Ведущий, раз в секунду из отдельного потока: если вкладка в фоне и её таймеры спят, отложенное уходит отсюда */
+  beat() {
+    if (!OWNER || !this.pub) return;
+    const now = Date.now();
+    if (now - (this.hostSent || 0) > 8500) this.bmsg({ t: 'host' });
+    for (const c of this.conn) if (c && now - c.at > 31000) { c.at = now; try { c.ws.send(new Uint8Array([0xC0, 0])); } catch (e) {} }
+    for (const c of this.inC) if (c && c.ok && now - c.pinged > 31000) c.ping();
+    if (!document.hidden) return;
+    if (this.bt && now - this.bLast > 400) this.bflush();
+    if (Sync.pending && !Sync.running && Sync.at && now > Sync.at + 1500) Sync.run();   // сохранение, которое проспал таймер
+    for (const id of Object.keys(this.shT)) if (this.shT[id]) { clearTimeout(this.shT[id]); this.shT[id] = 0; this.shsend(id); }
+    for (const id of Object.keys(this.locT)) if (this.locT[id]) { clearTimeout(this.locT[id]); this.locT[id] = 0; this.locsend(id); }
   },
   paint() {
     const el = $('#dice-net'); if (!el) return;
@@ -3810,8 +3948,8 @@ const Live = {
         if (type === 2) { if (body[1] !== 0) return close(); ws.send(pkt(0x82, [0, 1, ...str(topic), 0, ...str(topic + '/b'), 0])); }
         else if (type === 9) {
           if (me) continue;
-          me = { ws, send: (text, board) => ws.send(pkt(0x30, str(topic + (board ? '/b' : '')), te.encode(text))) };
-          this.conn[i] = me; ping = setInterval(() => { try { ws.send(new Uint8Array([0xC0, 0])); } catch (x) { close(); } }, 30000); this.wsState();
+          me = { ws, at: Date.now(), send: (text, board) => ws.send(pkt(0x30, str(topic + (board ? '/b' : '')), te.encode(text))) };
+          this.conn[i] = me; ping = setInterval(() => { me.at = Date.now(); try { ws.send(new Uint8Array([0xC0, 0])); } catch (x) { close(); } }, 30000); this.wsState();
         } else if (type === 3) {
           const tl = body[0] << 8 | body[1], name = td.decode(body.subarray(2, 2 + tl)), from = 2 + tl + ((head >> 1) & 3 ? 2 : 0);
           let msg; try { msg = JSON.parse(td.decode(body.subarray(from))); } catch (x) { continue; }
@@ -3839,17 +3977,25 @@ const Live = {
      s — линии по запросу, th — уменьшенная копия новой картинки, saved — журнал сохранён (зрители загружают свежую версию),
      hi и need — просьбы зрителя. Скрытые доски не рассылаются. */
   clock() { this._clock = Math.max(Date.now(), this._clock + 1); return this._clock; },
-  bmsg(m) { if (OWNER && m.t === 'host') m.hk = Hack.on ? 1 : 0; if (this.pub) this.pub(JSON.stringify({ ...m, v: 2, u: this.me, o: OWNER ? 1 : 0 }), true); },
+  bmsg(m) { if (OWNER && m.t === 'host') { m.hk = Hack.on ? 1 : 0; this.hostSent = Date.now(); } if (this.pub) this.pub(JSON.stringify({ ...m, v: 2, u: this.me, o: OWNER ? 1 : 0 }), true); },
   canPub(b) { return !!this.pub && !!b && S.boards.includes(b) && (OWNER ? !b.secret : READONLY && HOSTED); },
   pubBoard(b) { return OWNER && !!this.pub && !!b && !b.secret && S.boards.includes(b); },
   bstate(b) {
     if (!this.pubBoard(b)) return;
     this.bdirty.add(b.id); clearTimeout(this.bt);
-    this.bt = setTimeout(() => { this.bLast = Date.now(); const ids = [...this.bdirty]; this.bdirty.clear(); for (const id of ids) this.bsend(S.boards.find(x => x.id === id), true); }, Math.max(0, 200 - (Date.now() - this.bLast)));
+    this.bt = setTimeout(() => this.bflush(), Math.max(0, 200 - (Date.now() - this.bLast)));
   },
-  bsend(b, withNew) {
+  bflush() {
+    clearTimeout(this.bt); this.bt = 0; this.bLast = Date.now(); const ids = [...this.bdirty]; this.bdirty.clear(); for (const id of ids) this.bsend(S.boards.find(x => x.id === id), true);
+    /* Общие серверы изредка теряют сообщение. Когда на доске стало тихо, состояние повторяется ещё два раза:
+       у кого оно уже есть, тот ничего не заметит, а кто пропустил — догонит через секунду, не дожидаясь сохранения. */
+    clearTimeout(this.bre1); clearTimeout(this.bre2);
+    const again = () => { for (const id of ids) this.bsend(S.boards.find(x => x.id === id), false, true); };
+    this.bre1 = setTimeout(again, 900); this.bre2 = setTimeout(again, 2600);
+  },
+  bsend(b, withNew, keep) {
     if (!this.pubBoard(b)) return;
-    clearTimeout(this.tkT); this.tkT = 0; this.tk = null; clearTimeout(this.pnT); this.pnT = 0; this.pn = null;
+    if (!keep) { clearTimeout(this.tkT); this.tkT = 0; this.tk = null; clearTimeout(this.pnT); this.pnT = 0; this.pn = null; }
     const sk = b.strokes.map(shash), add = [];
     if (withNew) b.strokes.forEach((st, i) => { if (!this.sent.has(sk[i])) { this.sent.add(sk[i]); add.push(st); } });
     this.bmsg({ t: 'b', b: b.id, c: b.campaignId, n: b.name, at: this.clock(), items: b.items.map(it => ({ id: it.id, img: it.img, x: it.x, y: it.y, w: it.w, h: it.h, lock: it.lock ? 1 : 0 })), sk, add, ack: this.acks.slice(-40) });
@@ -3868,8 +4014,8 @@ const Live = {
       this.bmsg({ t: 'p', b: q.b, at: this.clock(), c: BV.color, w: q.d.w, p: simplify(q.d.p, 1.2 / BV.cam.k) });
     }, Math.max(0, 140 - (Date.now() - this.pnLast)));
   },
-  async bthumb(id) {
-    if (!this.pubBoard(BV.b) || !IMG[id] || (S.files && S.files[id] && !S.files[id].priv)) return;
+  async bthumb(id, b = BV.b, any) {            // any — картинка не с доски: портрет или жетон
+    if (!(any ? this.pub : this.pubBoard(b)) || !IMG[id] || (S.files && S.files[id] && !S.files[id].priv)) return;
     try {
       const im = new Image(); im.crossOrigin = 'anonymous';
       await new Promise((res, rej) => { im.onload = res; im.onerror = rej; im.src = IMG[id]; });
@@ -3883,12 +4029,16 @@ const Live = {
   saved(info) {
     if (!OWNER || !info) return; this.lastSaved = info; this.bmsg({ t: 'saved', sha: info.sha, at: info.at });
     for (const [id, t] of this.shDirty) if (t <= info.at) this.shDirty.delete(id);
+    for (const [id, t] of this.chDirty) if (t <= info.at) this.chDirty.delete(id);
+    for (const [id, t] of this.cfDirty) if (t <= info.at) this.cfDirty.delete(id);
     for (const [id, t] of this.locDirty) if (t <= info.at) this.locDirty.delete(id);
   },
   bhello() {
     const go = () => {
       this.helloT = 0; this.bmsg({ t: 'host' }); if (this.lastSaved) this.bmsg({ t: 'saved', ...this.lastSaved });
       for (const b of S.boards) this.bsend(b, false);
+      for (const id of this.chDirty.keys()) { const c = S.characters.find(x => x.id === id); if (c) this.chtell(c); }   // персонажи, изменённые после последнего сохранения
+      for (const id of this.cfDirty.keys()) this.cftell(id);
       for (const id of this.shDirty.keys()) this.shsend(id);   // листы, изменённые после последнего сохранения
       for (const id of this.locDirty.keys()) this.locsend(id);
     };
@@ -3909,7 +4059,7 @@ const Live = {
     if (!p || p.v !== 2 || typeof p.t !== 'string' || typeof p.u !== 'string' || !/^[a-z0-9]{1,40}$/.test(p.u) || p.u === this.me || !S) return;
     if (OWNER) {
       if (p.o) return;                                   // вторая вкладка самого ведущего
-      if (p.t === 'hi') this.bhello(); else if (p.t === 'ping') this.bmsg({ t: 'host' }); else if (p.t === 'need') this.bneed(p); else if (p.t === 'op') this.gin(p); else if (p.t === 'i' || p.t === 'p') this.tick(p);
+      if (p.t === 'hi') this.bhello(); else if (p.t === 'ping') this.bmsg({ t: 'host' }); else if (p.t === 'need') this.bneed(p); else if (p.t === 'op') this.gin(p); else if (p.t === 'im') this.imin(p); else if (p.t === 'i' || p.t === 'p') this.tick(p);
       return;
     }
     if (!READONLY) return;
@@ -3922,8 +4072,13 @@ const Live = {
     if (p.t === 'saved') { if (/^[0-9a-f]{40}$/.test(p.sha) && +p.at > (SHARED_AT || 0)) refreshViewer(false, p.sha); return; }
     if (p.t === 'th') {
       if (typeof p.img !== 'string' || typeof p.d !== 'string' || !/^data:image\/(webp|jpeg|png);base64,[A-Za-z0-9+/=]+$/.test(p.d) || p.d.length > 130000 || IMG[p.img]) return;
-      IMG[p.img] = p.d; this.thumbs.add(p.img); if (this.onBoard() && BV.b.items.some(it => it.img === p.img)) boardDraw(); return;
+      IMG[p.img] = p.d; this.thumbs.add(p.img); imgShown(p.img); return;
     }
+    if (p.t === 'ima') { const e = this.imAck; if (e && e.key === p.img + ':' + p.i) e.res(); return; }   // ведущий получил часть картинки — можно слать следующую
+    if (p.t === 'imok') { if (typeof p.img === 'string') { this.imOk.add(p.img); if (this.imOk.size > 200) this.imOk = new Set([...this.imOk].slice(-100)); } return; }
+    if (p.t === 'ch') return this.chrecv(p);
+    if (p.t === 'cf') return this.cfrecv(p);
+    if (p.t === 'shno') { const c = S.characters.find(x => x.id === p.ch); if (c && c.sheet && this.shNew.has(c.id)) { this.shNew.delete(c.id); delete c.sheet; chShown(c); toast('У этого персонажа уже есть лист, но ведущий его скрыл', 4500); } return; }
     if (p.t === 'sh') return this.shrecv(p);
     if (p.t === 'lf') return this.locrecv(p);
     if (typeof p.b !== 'string') return;
@@ -3993,10 +4148,14 @@ const Live = {
     this.acks.push(p.id); if (this.acks.length > 60) this.acks.shift();
     if (p.k === 'shf' || p.k === 'sheet') return this.shin(p);
     if (p.k === 'lf') return this.locin(p);
+    if (p.k === 'ch') return this.chin(p);
+    if (p.k === 'fimg') return this.fimgin(p);
     const b = S.boards.find(x => x.id === p.b); if (!this.pubBoard(b)) return;
     const cur = this.onBoard(b) && BV.b === b; if (cur) boardSnap();   // «Отменить» у ведущего отменяет и действие игрока
     const tell = () => document.hidden ? this.bsend(b, true) : this.bstate(b);
-    if (!applyOp(b, p)) { if (cur) BV.undo.pop(); return tell(); }
+    const mine = p.k !== 'del' || this.gadd.has(String(p.it && p.it.id));   // убрать можно только картинку, которую положил игрок
+    if (!mine || !applyOp(b, p)) { if (cur) BV.undo.pop(); return tell(); }
+    if (p.k === 'add') { this.gadd.add(p.it.id); this.bthumb(p.it.img, b); }
     b.updatedAt = Date.now(); save(5000); if (cur) boardDraw(); tell();
   },
   /* ── Факты мест в прямом эфире: ведущий рассылает список целиком, игрок шлёт ведущему одно поле ── */
@@ -4029,6 +4188,176 @@ const Live = {
     for (const o of this.lfq.values()) if (o.loc === l.id) { while (f.length <= o.i) f.push(''); f[o.i] = o.val; }
     l.facts = f; if (!quiet) factsSync(l);
   },
+  /* ── Картинки от игроков ──
+     Игрок режет картинку на части (im) и шлёт их ведущему в отдельную тему («…/u») по отдельному соединению: так картинка
+     не занимает канал, по которому идут линии и движения, и не скачивается у остальных игроков. Ведущий подтверждает каждую
+     часть (ima); неподтверждённая часть шлётся снова. Получив всё, ведущий сохраняет картинку у себя и отвечает imok — после
+     этого игрок на неё ссылается (кладёт на доску, ставит портретом или жетоном). Остальным ведущий шлёт уменьшенную копию (th),
+     а чёткую они получают с сайта после сохранения журнала — как и с картинками самого ведущего. */
+  imRx: new Map(), imOk: new Set(), imAck: null, gadd: new Set(), shNew: new Set(), bulkC: [], inC: [],
+  /* Дополнительное соединение с сервером: только отправка (игрок) или подписка на тему картинок (ведущий) */
+  link(i, sub, onmsg) {
+    if (!window.WebSocket || !window.TextEncoder) return null;
+    const te = new TextEncoder(), td = new TextDecoder(), topic = 'cjr/' + this.room() + '/u';
+    const str = t => { const b = te.encode(t); return [b.length >> 8, b.length & 255, ...b]; };
+    const pkt = (type, head, data) => {
+      const len = []; let n = head.length + (data ? data.length : 0); do { let d = n % 128; n = Math.floor(n / 128); if (n) d |= 128; len.push(d); } while (n);
+      const out = new Uint8Array(1 + len.length + head.length + (data ? data.length : 0)); out[0] = type; out.set(len, 1); out.set(head, 1 + len.length); if (data) out.set(data, 1 + len.length + head.length);
+      return out;
+    };
+    let ws; try { ws = new WebSocket(this.MQTT[i], 'mqtt'); } catch (e) { return null; }
+    ws.binaryType = 'arraybuffer';
+    const c = { ws, ok: false, was: false, at: Date.now(), pinged: Date.now(), onDown: null, send: text => ws.send(pkt(0x30, str(topic), te.encode(text))), ping: () => { c.pinged = Date.now(); try { ws.send(new Uint8Array([0xC0, 0])); } catch (e) {} } };
+    let buf = new Uint8Array(0);
+    c.ready = new Promise(res => {
+      const up = () => { clearTimeout(t); c.ok = c.was = true; res(c); };
+      const t = setTimeout(() => { if (!c.ok) { try { ws.close(); } catch (e) {} res(null); } }, 8000);
+      ws.onopen = () => ws.send(pkt(0x10, [...str('MQTT'), 4, 2, 0, 60, ...str('cjb' + uid())]));
+      ws.onmessage = e => {
+        const add = new Uint8Array(e.data), all = new Uint8Array(buf.length + add.length); all.set(buf); all.set(add, buf.length); buf = all;
+        for (;;) {
+          if (buf.length < 2) return;
+          let len = 0, mul = 1, k = 1, b;
+          do { if (k >= buf.length) return; b = buf[k++]; len += (b & 127) * mul; mul *= 128; } while ((b & 128) && k < 5);
+          if (buf.length < k + len) return;
+          const head = buf[0], body = buf.slice(k, k + len), type = head >> 4; buf = buf.slice(k + len);
+          if (type === 2) { if (body[1] !== 0) { try { ws.close(); } catch (x) {} return res(null); } if (sub) ws.send(pkt(0x82, [0, 1, ...str(topic), 0])); else up(); }
+          else if (type === 9) up();
+          else if (type === 3 && onmsg) {
+            const tl = body[0] << 8 | body[1], from = 2 + tl + ((head >> 1) & 3 ? 2 : 0);
+            let msg; try { msg = JSON.parse(td.decode(body.subarray(from))); } catch (x) { continue; }
+            try { onmsg(msg); } catch (x) { console.error(x); }
+          }
+        }
+      };
+      ws.onclose = ws.onerror = () => { c.ok = false; clearTimeout(t); res(null); const f = c.onDown; c.onDown = null; if (f) f(); };
+    });
+    return c;
+  },
+  bulk(i) {                      // игрок: соединение для отправки картинок, открывается при первой надобности
+    let c = this.bulkC[i];
+    if (c) {
+      if ((c.ok && c.ws.readyState === 1) || c.ws.readyState === 0) return c.ready;
+      if (!c.was && Date.now() - c.at < 30000) return Promise.resolve(null);     // недавно не получилось — пока не пробуем
+    }
+    c = this.bulkC[i] = this.link(i, false); return c ? c.ready : Promise.resolve(null);
+  },
+  bulkIn(i) {                    // ведущий: соединение, по которому приходят картинки игроков; само восстанавливается
+    const again = () => setTimeout(() => this.bulkIn(i), 15000);
+    const c = this.link(i, true, m => { if (m && m.v === 2 && m.t === 'im' && !m.o && typeof m.u === 'string' && /^[a-z0-9]{1,40}$/.test(m.u) && m.u !== this.me && S) this.imin(m); });
+    this.inC[i] = c; if (!c) return again();
+    c.onDown = again;
+  },
+  imsend(id, data) { const run = () => this.imsend1(id, data); this.imQ = (this.imQ || Promise.resolve()).then(run, run); return this.imQ; },
+  async imsend1(id, data) {
+    const N = 32000, n = Math.ceil(data.length / N); if (!this.pub || n < 1 || n > 60) return false;
+    for (let i = 0; i < n; i++) {
+      const text = JSON.stringify({ t: 'im', img: id, i, n, d: data.slice(i * N, (i + 1) * N), v: 2, u: this.me, o: 0 });
+      let ok = false;
+      for (let a = 0; a < 5 && !ok; a++) {
+        if (!HOSTED || !this.conn.some(Boolean)) { this.imAck = null; return false; }
+        let outs = a < 3 ? (await Promise.all(this.MQTT.map((u, k) => this.bulk(k)))).filter(c => c && c.ok && c.ws.readyState === 1) : [];
+        if (!outs.length) outs = this.conn.filter(Boolean);        // отдельного соединения нет или оно не помогло — по обычному
+        const ack = new Promise(res => { this.imAck = { key: id + ':' + i, res }; });
+        let sent = 0; for (const c of outs) try { if (c.ws.bufferedAmount < 96000) { c.send(text, true); sent++; } } catch (e) {}
+        if (sent) ok = await Promise.race([ack.then(() => true), sleep(a ? 4000 : 2500).then(() => false)]); else await sleep(300);
+      }
+      if (!ok) { this.imAck = null; return false; }
+    }
+    this.imAck = null; return true;
+  },
+  /* Игрок: передать картинку ведущему и дождаться, пока он её сохранит у себя */
+  async imput(id) {
+    const data = IMG[id];
+    if (!READONLY || !HOSTED || !this.pub || typeof data !== 'string' || data.length > 1500000 || !WIRE_IMG.test(data)) return false;
+    if (!(await this.imsend(id, data))) return false;
+    for (let k = 0; k < 60 && !this.imOk.has(id); k++) await sleep(100);
+    return this.imOk.has(id);
+  },
+  imin(p) {                      // ведущий: пришла часть картинки
+    const id = p.img, n = +p.n, i = +p.i;
+    if (!OWNER || typeof id !== 'string' || !/^[A-Za-z0-9_-]{6,40}$/.test(id) || typeof p.d !== 'string' || p.d.length > 34000 || !Number.isInteger(n) || !Number.isInteger(i) || n < 1 || n > 60 || i < 0 || i >= n) return;
+    const ack = () => this.bmsg({ t: 'ima', img: id, i });
+    if (IMKEEP.has(id)) { ack(); if (i === n - 1) this.bmsg({ t: 'imok', img: id }); return; }
+    if (IMG[id]) return;
+    const now = Date.now(); for (const [k, r] of this.imRx) if (now - r.at > 60000) this.imRx.delete(k);
+    let r = this.imRx.get(id);
+    if (!r) { if (this.imRx.size >= 8) return; r = { u: p.u, n, parts: new Array(n).fill(null), got: 0, at: now }; this.imRx.set(id, r); }
+    if (r.u !== p.u || r.n !== n) return;
+    if (r.parts[i] === null) { r.parts[i] = p.d; r.got++; } r.at = now; ack();
+    if (r.got < n) return;
+    this.imRx.delete(id); const d = r.parts.join('');
+    if (d.length > 1500000 || !WIRE_IMG.test(d)) return;
+    IMG[id] = d; IMKEEP.set(id, now); Store.put('img', id, d); this.bmsg({ t: 'imok', img: id });
+  },
+  /* ── Персонажи в прямом эфире: игрок шлёт ведущему открытые поля, ведущий рассылает персонажа (без скрытого) ── */
+  chDirty: new Map(), chAt: {}, chkeep: {}, cfDirty: new Map(), cfAt: {}, cfkeep: {},
+  pubChar(c) { return !!c && !c.secret && S.campaigns.some(k => k.id === c.campaignId); },
+  /* Игрок: отправить ведущему действие не с доски; если подтверждения нет — сказать об этом */
+  gsend(op, fail) {
+    op.id = uid(); op.n = ++this.opN; op.t0 = Date.now(); this.pend.push(op); this.bmsg({ t: 'op', ...op });
+    setTimeout(() => { if (this.pend.includes(op)) toast(fail, 5500); }, 7000);
+  },
+  chop(id, fields, isNew) {
+    const f = cleanChar(fields);
+    if (!READONLY || !HOSTED || !this.pub || !f) { toast('Нет связи с ведущим — изменение не сохранится'); return false; }
+    const op = { k: 'ch', pc: id, c: cid(), f }, b = BV.b && S.boards.includes(BV.b) ? BV.b : null;
+    if (b) op.b = b.id;
+    const c = chPut(id, op.c, f);
+    if (isNew && b && c.kind === 'pc' && Array.isArray(b.cast) && !b.cast.includes(id)) b.cast.push(id);
+    this.gsend(op, 'Ведущий не подтвердил изменение персонажа. Проверьте связь и сохраните ещё раз.'); chShown(c); return true;
+  },
+  chpub(c) { if (OWNER && this.pub && this.pubChar(c)) { this.chDirty.set(c.id, Date.now()); this.chtell(c); } },
+  chtell(c) { const id = c.id; if (c.portrait && IMG[c.portrait]) this.bthumb(c.portrait, null, true).then(() => this.chsend(id)); else this.chsend(id); },   // сначала уменьшенный портрет, чтобы у игроков он был к приходу персонажа
+  chsend(id) {
+    const c = S.characters.find(x => x.id === id); if (!this.pub || !this.pubChar(c)) return;
+    this.bmsg({ t: 'ch', at: this.clock(), pc: c.id, c: c.campaignId, f: cleanChar(c), bc: S.boards.filter(b => !b.secret && Array.isArray(b.cast) && b.cast.includes(c.id)).map(b => b.id).slice(0, 40), ack: this.acks.slice(-40) });
+  },
+  chin(p) {
+    const f = cleanChar(p.f); if (!f || typeof p.pc !== 'string' || !/^[A-Za-z0-9_-]{6,40}$/.test(p.pc)) return;
+    const old = S.characters.find(x => x.id === p.pc);
+    if (old ? !this.pubChar(old) : (!S.campaigns.some(k => k.id === p.c) || S.characters.length >= 4000)) return;
+    if (f.portrait && !IMG[f.portrait]) f.portrait = old ? old.portrait : null;
+    const c = chPut(p.pc, p.c, f); save(5000);
+    if (!old && c.kind === 'pc') { const b = S.boards.find(x => x.id === p.b); if (b && b.campaignId === c.campaignId && Array.isArray(b.cast) && !b.cast.includes(c.id)) { b.cast.push(c.id); b.updatedAt = Date.now(); } }
+    this.chDirty.set(c.id, Date.now()); this.chtell(c); chShown(c);
+  },
+  chrecv(p, quiet) {
+    const f = cleanChar(p.f), at = +p.at || 0; if (!f || typeof p.pc !== 'string' || !/^[A-Za-z0-9_-]{6,40}$/.test(p.pc) || !S.campaigns.some(k => k.id === p.c)) return;
+    if (!quiet) { if (at <= (this.chAt[p.pc] || 0)) return; this.chAt[p.pc] = at; this.chkeep[p.pc] = p; this.acked(p.ack); }
+    const old = S.characters.find(x => x.id === p.pc);
+    if (f.portrait && !IMG[f.portrait] && old && old.portrait && IMG[old.portrait]) f.portrait = old.portrait;   // уменьшенная копия нового портрета не дошла — до сохранения журнала остаётся прежний
+    const c = chPut(p.pc, old ? old.campaignId : p.c, f);
+    if (Array.isArray(p.bc)) for (const b of S.boards) if (Array.isArray(b.cast) && p.bc.includes(b.id) && !b.cast.includes(c.id)) b.cast.push(c.id);
+    for (const o of this.pend) if (o.k === 'ch' && o.pc === c.id) chPut(c.id, c.campaignId, o.f);   // своя ещё не подтверждённая правка остаётся сверху
+    if (!quiet) chShown(c);
+  },
+  /* Картинка жетонов судьбы — одна на кампанию */
+  fimg(img) {
+    const c = campaign(); if (!c) return false;
+    if (!READONLY || !HOSTED || !this.pub) { toast('Нет связи с ведущим — изменение не сохранится'); return false; }
+    c.fateImg = img || null; this.gsend({ k: 'fimg', c: c.id, img: img || null }, 'Ведущий не подтвердил картинку жетона. Проверьте связь и попробуйте ещё раз.'); railRender(); return true;
+  },
+  fimgin(p) {
+    const c = S.campaigns.find(k => k.id === p.c); if (!c) return;
+    if (p.img == null) c.fateImg = null;
+    else if (typeof p.img === 'string' && typeof IMG[p.img] === 'string' && IMG[p.img].length < 600000) c.fateImg = p.img;
+    else return this.cfsend(c.id);
+    c.updatedAt = Date.now(); save(5000); gcImages(); this.fpub(c); if (c.id === cid() && $('#board')) railRender();
+  },
+  fpub(c) { if (OWNER && this.pub && c) { this.cfDirty.set(c.id, Date.now()); this.cftell(c.id); } },
+  cftell(id) {                  // сначала уменьшенная копия жетона, потом сообщение о смене
+    const c = S.campaigns.find(k => k.id === id); if (!c) return;
+    if (c.fateImg && IMG[c.fateImg]) this.bthumb(c.fateImg, null, true).then(() => this.cfsend(id)); else this.cfsend(id);
+  },
+  cfsend(id) { const c = S.campaigns.find(k => k.id === id); if (this.pub && c) this.bmsg({ t: 'cf', at: this.clock(), c: c.id, img: c.fateImg || null, ack: this.acks.slice(-40) }); },
+  cfrecv(p, quiet) {
+    const c = S.campaigns.find(k => k.id === p.c), at = +p.at || 0;
+    if (!c || !(p.img === null || (typeof p.img === 'string' && /^[A-Za-z0-9_-]{1,60}$/.test(p.img)))) return;
+    if (!quiet) { if (at <= (this.cfAt[p.c] || 0)) return; this.cfAt[p.c] = at; this.cfkeep[p.c] = p; this.acked(p.ack); }
+    if (this.pend.some(o => o.k === 'fimg' && o.c === c.id)) return;
+    c.fateImg = p.img; if (!quiet && c.id === cid() && $('#board')) railRender();
+  },
   /* ── Листы персонажей в прямом эфире ── */
   sheet(c, patch) {
     if (OWNER) {
@@ -4044,11 +4373,13 @@ const Live = {
     if (!this.shqT) this.shqT = setTimeout(() => {
       this.shqT = 0; const list = [...this.shq.values()]; this.shq.clear();
       for (const o of list) { o.id = uid(); o.n = ++this.opN; o.t0 = Date.now(); this.pend.push(o); this.bmsg({ t: 'op', ...o }); }
-    }, 300);
+    }, 200);
   },
   shsend(id) { const c = S.characters.find(x => x.id === id); if (this.pub && pubSheet(c)) this.bmsg({ t: 'sh', ch: c.id, at: this.clock(), blocks: c.sheet.blocks, ack: this.acks.slice(-40) }); },
   shin(p) {
-    const c = S.characters.find(x => x.id === p.ch); if (!pubSheet(c)) return;
+    const c = S.characters.find(x => x.id === p.ch);
+    if (p.k === 'sheet' && this.pubChar(c) && !c.sheet && cleanBlocks(p.blocks)) c.sheet = { secret: false, blocks: [] };   // игрок завёл лист персонажу, у которого листа не было
+    if (!pubSheet(c)) { if (p.k === 'sheet' && this.pubChar(c) && c.sheet) this.bmsg({ t: 'shno', ch: c.id }); return; }
     if (shApply(c, p)) { c.updatedAt = Date.now(); save(5000); shShow(c); }
     this.shDirty.set(c.id, Date.now()); this.shsend(c.id);
   },
@@ -4087,6 +4418,9 @@ const Live = {
   /* После загрузки свежего журнала: то, что пришло по прямой связи позже сохранения, остаётся в силе */
   breplay() {
     for (const [id, p] of Object.entries(this.bkeep)) { if ((+p.at || 0) > (SHARED_AT || 0)) this.bapply(p, true, true); else delete this.bkeep[id]; }
+    for (const [id, p] of Object.entries(this.chkeep)) { if ((+p.at || 0) > (SHARED_AT || 0)) this.chrecv(p, true); else delete this.chkeep[id]; }
+    for (const [id, p] of Object.entries(this.cfkeep)) { if ((+p.at || 0) > (SHARED_AT || 0)) this.cfrecv(p, true); else delete this.cfkeep[id]; }
+    for (const o of this.pend) if (o.k === 'ch' && S.campaigns.some(k => k.id === o.c)) chPut(o.pc, o.c, o.f);
     for (const [id, p] of Object.entries(this.shkeep)) { if ((+p.at || 0) > (SHARED_AT || 0)) this.shrecv(p, true); else delete this.shkeep[id]; }
     for (const [id, p] of Object.entries(this.lfkeep)) { if ((+p.at || 0) > (SHARED_AT || 0)) this.locrecv(p, true); else delete this.lfkeep[id]; }
     this.acked();
@@ -4721,12 +5055,12 @@ function castOf(b) {
 }
 function railHtml() {
   const cast = castOf(curBoard()), open = new Set(wins().map(w => w.id));
-  if (!cast.length && READONLY) return `<div id="b-rail" hidden></div>`;
+  if (!cast.length && READONLY && !ONLINE) return `<div id="b-rail" hidden></div>`;
   return `<div class="b-panel b-rail ${SW.hide ? 'hide' : ''}" id="b-rail">
     <button class="b-btn" data-act="rail-toggle" title="${SW.hide ? 'Показать портреты' : 'Свернуть портреты'}" aria-label="Портреты персонажей">${ic('users')}</button>
     <div class="rail-list">${cast.map(c => { const src = c.portrait && IMG[c.portrait], fp = SW.fp.has(c.id); return `<div class="rail-row" data-id="${esc(c.id)}"><button class="rail-p ${open.has(c.id) ? 'on' : ''}" data-act="sh-open" data-id="${esc(c.id)}" title="${esc(c.name)} — лист персонажа">${src ? `<img src="${esc(src)}" alt="">` : `<span class="ph">${esc(initials(c.name))}</span>`}<span class="nm">${esc(c.name.trim().split(/\s+/)[0])}</span></button>${c.sheet ? `<button class="fp-mini ${fp ? 'on' : ''} ${fateSrc() ? 'img' : ''}" data-act="fp-toggle" data-id="${esc(c.id)}" title="${fp ? 'Убрать жетоны судьбы' : 'Показать жетоны судьбы'}" aria-label="Жетоны судьбы: ${esc(c.name)}" aria-expanded="${fp}">${fateSrc() ? `<img src="${esc(fateSrc())}" alt="" draggable="false">` : ''}</button>` : ''}</div>`; }).join('')
       || `<p class="rail-none">Портретов пока нет</p>`}</div>
-    ${READONLY ? '' : `<button class="b-btn" data-act="sh-cast-menu" title="Выбрать, чьи портреты здесь стоят" aria-label="Выбрать персонажей">${ic('plus')}</button>`}
+    ${READONLY ? (ONLINE ? `<button class="b-btn" data-act="ch-new" title="Новый персонаж. Работает, пока ведущий на связи" aria-label="Новый персонаж">${ic('plus')}</button>` : '') : `<button class="b-btn" data-act="sh-cast-menu" title="Выбрать, чьи портреты здесь стоят" aria-label="Выбрать персонажей">${ic('plus')}</button>`}
   </div>`;
 }
 function railRender() { const r = $('#b-rail'); if (r) r.outerHTML = railHtml(); fateRender(); }
@@ -4809,7 +5143,7 @@ function blockHtml(b, bi, edit, ro) {
 }
 function sheetBody(c, edit) {
   const sh = c.sheet, ro = sheetRO();
-  if (!sh) return READONLY ? `<p class="sh-none">Листа этого персонажа здесь нет.</p>${c.role ? `<p class="sh-none">${esc(c.role)}</p>` : ''}`
+  if (!sh) return ro || c.sheetHidden ? `<p class="sh-none">${c.sheetHidden && !ro ? 'Лист этого персонажа ведущий пока не показывает.' : 'Листа этого персонажа здесь нет.'}</p>${c.role ? `<p class="sh-none">${esc(c.role)}</p>` : ''}`
     : `<p class="sh-none">У этого персонажа ещё нет листа. Выберите заготовку — потом в ней можно изменить всё: названия, разделы, строки, клетки.</p><div class="sh-tpls">${Object.entries(SHEETS).map(([k, t]) => `<button class="sh-tpl" data-act="sh-tpl" data-v="${k}"><b>${t.name}</b><span>${t.hint}</span></button>`).join('')}</div>`;
   const blocks = sh.blocks.map((b, bi) => blockHtml(b, bi, edit, ro)).join('');
   return (!READONLY && sh.secret ? `<button class="sh-secret" data-act="sh-secret" title="Нажмите, чтобы показать лист другим">${ic('lock')}Этот лист видите только вы</button>` : '')
@@ -4822,7 +5156,7 @@ function winHtml(w, i) {
   const sub = c.kind === 'pc' ? (c.player ? 'Игрок: ' + c.player : 'Персонаж игрока') : (c.role || 'НИП');
   return `<section class="sh-win ${w.min ? 'min' : ''} ${edit ? 'editing' : ''}" data-id="${esc(c.id)}" data-sig="${esc(shSig(c))}" style="left:${w.x}px;top:${w.y}px;width:${w.w}px;${w.min ? '' : `height:${w.h}px;`}z-index:${6 + i}" aria-label="Лист: ${esc(c.name)}">
     <header class="sh-head">${src ? `<img class="sh-av" src="${esc(src)}" alt="">` : `<span class="sh-av">${esc(initials(c.name))}</span>`}<div class="sh-ttl"><b>${esc(c.name)}</b><span>${esc(sub)}</span></div>
-      ${!ro && c.sheet ? `<button class="b-btn sm ${edit ? 'on' : ''}" data-act="sh-edit" title="${edit ? 'Закончить настройку' : 'Настроить лист: разделы, названия, строки'}" aria-label="Настроить лист">${ic('edit')}</button>${READONLY ? '' : `<button class="b-btn sm" data-act="sh-menu" title="Ещё" aria-label="Ещё">${ic('dots')}</button>`}` : ''}
+      ${!ro && c.sheet ? `<button class="b-btn sm ${edit ? 'on' : ''}" data-act="sh-edit" title="${edit ? 'Закончить настройку' : 'Настроить лист: разделы, названия, строки'}" aria-label="Настроить лист">${ic('edit')}</button><button class="b-btn sm" data-act="sh-menu" title="Ещё" aria-label="Ещё">${ic('dots')}</button>` : !ro && READONLY ? `<button class="b-btn sm" data-act="sh-menu" title="Ещё" aria-label="Ещё">${ic('dots')}</button>` : ''}
       <button class="b-btn sm" data-act="sh-min" title="${w.min ? 'Развернуть' : 'Свернуть в полоску'}" aria-label="${w.min ? 'Развернуть' : 'Свернуть'}">${ic(w.min ? 'down' : 'minus')}</button><button class="b-btn sm" data-act="sh-close" title="Закрыть лист" aria-label="Закрыть лист">${ic('x')}</button>
     </header>${placesOf(c).length || !READONLY ? `<div class="sh-place"><span>${placesOf(c).length > 1 ? 'Места' : 'Место'}</span><div class="pl-list">${placeLinks(c)}${placeAdd(c)}</div></div>` : ''}<div class="sh-body">${sheetBody(c, edit)}</div></section>`;
 }
@@ -4965,10 +5299,20 @@ Object.assign(ACT, {
   'fp-img': async () => {
     closeMenu(); const files = (await pickFiles('image/*', false)).filter(f => f.type.startsWith('image/')); if (!files.length) return;
     let data; try { data = await processToken(files[0]); } catch (e) { return toast('Не получилось прочитать картинку «' + files[0].name + '»'); }
-    const c = campaign(); if (!c) return; const id = uid(); IMG[id] = data; Store.put('img', id, data);
-    c.fateImg = id; c.updatedAt = Date.now(); save(); gcImages(); railRender(); toast('Картинка жетона заменена');
+    const c = campaign(); if (!c) return; const id = uid(); IMG[id] = data;
+    if (READONLY) {                              // игрок: картинка уходит ведущему, запись делает его вкладка
+      if (sheetRO()) return toast('Нет связи с ведущим — изменение не сохранится');
+      Live.thumbs.add(id); const note = toastHold('Отправляю картинку жетона…'), sent = await Live.imput(id); note.remove();
+      if (!sent) return toast('Картинка не дошла до ведущего. Попробуйте ещё раз.', 5000);
+      if (Live.fimg(id)) toast('Картинка жетона заменена');
+      return;
+    }
+    Store.put('img', id, data);
+    c.fateImg = id; c.updatedAt = Date.now(); save(); gcImages(); railRender(); Live.fpub(c); toast('Картинка жетона заменена');
   },
-  'fp-img-clear': () => { const c = campaign(); if (!c) return; c.fateImg = null; c.updatedAt = Date.now(); save(); gcImages(); railRender(); },
+  'fp-img-clear': () => { const c = campaign(); if (!c) return; if (READONLY) { Live.fimg(null); return; } c.fateImg = null; c.updatedAt = Date.now(); save(); gcImages(); railRender(); Live.fpub(c); },
+  'ch-new': () => { if (guestCan()) openForm('characters', null, { kind: 'pc' }); },
+  'ch-edit': el => { closeMenu(); const c = byId('characters', el.dataset.id); if (c && guestCan()) openForm('characters', c.id); },
   'fp-make': el => {
     const c = shChar(el.dataset.id); if (!c || !c.sheet || fateRow(c) || sheetRO()) return;
     c.sheet.blocks.push({ t: 'counter', title: 'Жетоны судьбы', rows: [{ k: 'Обновление', n: 3 }, { k: 'Сейчас', n: 3 }] }); SW.fpNew = c.id; shTouch(c, true);
@@ -4990,12 +5334,18 @@ Object.assign(ACT, {
   'sh-edit': el => { const x = shCtx(el); if (!x) return; x.w.edit = !x.w.edit; winRefresh(x.c.id); },
   'sh-menu': el => {
     const x = shCtx(el); if (!x) return; SW.menuFor = x.c.id;
+    if (READONLY) return openMenu(el, `<button data-act="ch-edit" data-id="${esc(x.c.id)}">${ic('edit')}Изменить персонажа и портрет…</button><button data-act="sh-page">${ic('users')}Страница персонажа</button><hr><div class="menu-label">Жетоны судьбы — у всех персонажей</div><button data-act="fp-img">${ic('image')}${fateSrc() ? 'Заменить картинку жетона…' : 'Картинка жетона…'}</button>${fateSrc() ? `<button data-act="fp-img-clear">${ic('trash')}Убрать картинку жетона</button>` : ''}`);
     openMenu(el, `<button data-act="sh-secret">${ic('lock')}${x.c.sheet.secret ? 'Показывать лист другим' : 'Скрыть лист от других'}</button><button data-act="sh-page">${ic('users')}Страница персонажа</button><hr><div class="menu-label">Жетоны судьбы — у всех персонажей</div><button data-act="fp-img">${ic('image')}${fateSrc() ? 'Заменить картинку жетона…' : 'Картинка жетона…'}</button>${fateSrc() ? `<button data-act="fp-img-clear">${ic('trash')}Убрать картинку жетона</button>` : ''}<hr><div class="menu-label">Заменить заготовкой</div>${Object.entries(SHEETS).map(([k, t]) => `<button data-act="sh-tpl" data-v="${k}">${ic('book')}${t.name}</button>`).join('')}`, true);
   },
   'sh-page': () => { const c = shChar(SW.menuFor); if (c) go('characters/' + c.id); },
   'sh-secret': el => { const x = shCtx(el); if (!x || !x.c.sheet) return; x.c.sheet.secret = !x.c.sheet.secret; shTouch(x.c, true); toast(x.c.sheet.secret ? 'Лист скрыт: его видите только вы' : 'Лист теперь виден всем, у кого есть ссылка', 3200); },
   'sh-tpl': async el => {
     const x = shCtx(el), t = SHEETS[el.dataset.v]; if (!x || !t) return;
+    if (READONLY) {                              // игрок может завести лист, но не заменить уже существующий
+      if (x.c.sheet || x.c.sheetHidden || sheetRO()) return;
+      x.c.sheet = { secret: false, blocks: t.make() }; Live.shNew.add(x.c.id); if (x.w) x.w.edit = el.dataset.v === 'blank';
+      return shTouch(x.c, true);
+    }
     if (x.c.sheet && x.c.sheet.blocks.length && !(await confirmDialog(`Заменить лист персонажа «${esc(x.c.name)}» заготовкой «${t.name}»? Всё, что в нём записано, пропадёт.`, 'Заменить лист'))) return;
     x.c.sheet = { secret: x.c.sheet ? !!x.c.sheet.secret : x.c.kind !== 'pc', blocks: t.make() }; if (x.w) x.w.edit = el.dataset.v === 'blank';
     shTouch(x.c, true);
@@ -5082,7 +5432,7 @@ document.addEventListener('keyup', e => { if (e.code === 'Space' && BV.space) { 
 document.addEventListener('paste', e => {
   const files = [...(e.clipboardData ? e.clipboardData.files : [])].filter(f => f.type.startsWith('image/')); if (!files.length) return;
   if (!F) { if (route.view === 'board' && !$('#dlg') && !/^(INPUT|TEXTAREA)$/.test(e.target.tagName)) { e.preventDefault(); boardAddFiles(files); } return; }
-  const f = FIELDS[F.type].find(x => x.type === 'image' && !F.draft[x.k]) || FIELDS[F.type].find(x => x.type === 'images') || FIELDS[F.type].find(x => x.type === 'image');
+  const f = formFields().find(x => x.type === 'image' && !F.draft[x.k]) || formFields().find(x => x.type === 'images') || formFields().find(x => x.type === 'image');
   if (f) { e.preventDefault(); addImages(f.k, files); }
 });
 document.addEventListener('dragover', e => { if ((F || route.view === 'board') && e.dataTransfer && [...e.dataTransfer.types].includes('Files')) e.preventDefault(); });
@@ -5092,7 +5442,7 @@ document.addEventListener('drop', e => {
   if (!F) { if (route.view === 'board' && e.target.closest('#board') && !$('#dlg')) boardAddFiles([...e.dataTransfer.files], toWorld(e)); return; }
   const zone = e.target.closest('[data-drop]') || e.target.closest('[data-field]');
   let k = zone && (zone.dataset.drop || zone.dataset.field);
-  if (!k || !['image', 'images'].includes((fieldDef(k) || {}).type)) { const f = FIELDS[F.type].find(x => x.type === 'images') || FIELDS[F.type].find(x => x.type === 'image'); k = f && f.k; }
+  if (!k || !['image', 'images'].includes((fieldDef(k) || {}).type)) { const f = formFields().find(x => x.type === 'images') || formFields().find(x => x.type === 'image'); k = f && f.k; }
   if (k) addImages(k, [...e.dataTransfer.files]);
 });
 document.addEventListener('visibilitychange', () => { if (document.hidden && OWNER && Sync.pending && !Sync.running) Sync.run(); });
