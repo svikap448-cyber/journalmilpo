@@ -2575,6 +2575,8 @@ function processImage(file, MAX = 1600, quality = 0.86) {
   });
 }
 /* Картинка игрока: уменьшенная и в том виде, в котором её можно передать ведущему по прямой связи */
+const BUILD = 123;   // номер сборки: ведущий сообщает его игрокам; при несовпадении игрок видит совет обновить страницу. Менять при каждой правке обмена по сети
+const BLANK_IMG = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR4nGOoaOpxAwAEyQHNbJ6SYgAAAABJRU5ErkJggg==';   // место под картинку игрока, пока до ведущего не дошла даже уменьшенная копия
 function reencode(src, MAX, q) {
   return new Promise((res, rej) => {
     const im = new Image(); im.onerror = () => rej(new Error('decode'));
@@ -2851,7 +2853,7 @@ const Sync = {
     const t0 = Date.now(), snap = clone(S), pub = filterState(snap), pubImgs = usedImages(pub), old = snap.files || {};
     const files = {}, plan = { prv: [], pub: [] }, entries = { prv: [], pub: [] };
     for (const id of usedImages(snap)) {
-      if (!/^[\w-]+$/.test(id) || (!IMG[id] && !old[id])) continue;
+      if (!/^[\w-]+$/.test(id) || (!IMG[id] && !old[id]) || Live.part.has(id)) continue;   // от игрока пока есть только уменьшенная копия — в журнал её не кладём
       const priv = !pubImgs.has(id), prev = old[id], key = priv ? 'prv' : 'pub';
       if (prev && prev.priv === priv && this[key].paths.has(`img/${id}.${prev.ext}`)) { files[id] = prev; continue; }
       if (!IMG[id]) { files[id] = prev; continue; }          // картинка ещё не загрузилась — оставляем как было
@@ -3580,12 +3582,12 @@ async function boardPlace(imgId, at, n = 0, th) {
   const sc = Math.min(r.width * 0.6 / c.k / size.w, r.height * 0.6 / c.k / size.h, 1 / c.k);
   const w = r1(size.w * sc), h = r1(size.h * sc), [cx, cy] = at || [(r.width / 2 - c.x) / c.k, (r.height / 2 - c.y) / c.k];
   const it = { id: uid(), img: imgId, x: r1(cx - w / 2 + n * 28 / c.k), y: r1(cy - h / 2 + n * 28 / c.k), w, h };
-  if (READONLY) {                              // игрок: картинка встаёт у него сразу, ведущему уходит действие (с уменьшенной копией, если полная ещё не у него)
+  if (READONLY) {                              // игрок: картинка встаёт у него сразу, ведущему уходит короткое действие; сама картинка идёт отдельно
     if (!Live.gop({ k: 'add', b: BV.b.id, it, ...(th ? { th } : {}) }, { k: 'del', b: BV.b.id, it: { id: it.id } })) return null;
     BV.sel = it.id; setTool('move'); boardDraw(); return it;
   }
   boardSnap();
-  BV.b.items.push(it); BV.sel = it.id; setTool('move'); boardDraw(); boardTouch(); Live.bthumb(imgId); Live.bcast(imgId);
+  BV.b.items.push(it); BV.sel = it.id; setTool('move'); boardDraw(); boardTouch(); { const bb = BV.b; Live.bthumb(imgId, bb).then(() => Live.bcast(imgId, bb)); }
   return it;
 }
 /* Игрок добавляет картинку. Она сразу встаёт на доску: у него — настоящая, у остальных — уменьшенная копия.
@@ -3593,37 +3595,53 @@ async function boardPlace(imgId, at, n = 0, th) {
 async function boardGuestFiles(files, at) {
   files = files.filter(f => f.type.startsWith('image/')); if (!files.length || !ONLINE) return;
   if (boardRO()) return toast('Картинки можно добавлять, пока ведущий на связи', 3800);
-  if (BV.sending) return toast('Предыдущая картинка ещё отправляется');
   if (files.length > 4) { files = files.slice(0, 4); toast('За один раз — не больше четырёх картинок', 3000); }
-  BV.sending = true; let n = 0;
+  /* Картинки уходят по одной. Если предыдущая ещё в пути, новые ждут своей очереди (раньше в этом случае был отказ). */
+  const q = BV.upQ || (BV.upQ = []);
+  if (BV.sending && q.length + files.length > 4) return toast('Подождите немного: предыдущие картинки ещё отправляются', 3200);
+  files.forEach((file, k) => q.push({ file, at, k }));
+  if (BV.sending) return toast(files.length > 1 ? 'Картинки добавятся, как только отправится предыдущая' : 'Картинка добавится, как только отправится предыдущая', 2600);
+  BV.sending = true;
   const lost = () => toast('Связь с ведущим пропала — картинка не добавлена', 4000);
   try {
-    for (const file of files) {
+    while (q.length) {
+      const { file, at, k: n } = q.shift();
       let data; try {
         data = await wireImage(file, 1600, 0.82);
         /* Передача идёт примерно по 180 000 знаков в секунду, поэтому тяжёлый снимок ужимаем сильнее: иначе чёткая копия идёт дольше трёх секунд */
         for (const [mx, q] of [[1600, 0.72], [1360, 0.7]]) { if (data.length <= 400000 || !data.startsWith('data:image/jpeg')) break; const d2 = await reencode(data, mx, q); if (WIRE_IMG.test(d2) && d2.length < data.length) data = d2; }
       } catch (e) { toast('Не получилось прочитать картинку «' + file.name + '»'); continue; }
       const id = uid(), b = BV.b; IMG[id] = data; Live.thumbs.add(id);
-      let th = null; try { th = await Live.shrink(id, 420, 0.55); if (th.length >= 120000 || !WIRE_IMG.test(th)) th = null; } catch (e) { th = null; }
+      let th = null; try { th = await Live.shrink(id, 420, 0.55); if (th.length > 30000) th = await Live.shrink(id, 320, 0.5); if (th.length >= 120000 || !WIRE_IMG.test(th)) th = null; } catch (e) { th = null; }
       if (!$('#board') || boardRO() || BV.b !== b) { delete IMG[id]; Live.thumbs.delete(id); lost(); break; }
-      const it = th ? await boardPlace(id, at, n++, th) : null;
-      if (th && !it) { delete IMG[id]; Live.thumbs.delete(id); break; }
+      const it = await boardPlace(id, at, n, th && Live.hostBv !== BUILD ? th : null);   // у самого игрока картинка стоит сразу; ведущему со старой страницей (сборка 122) копия нужна внутри действия
+      if (!it) { delete IMG[id]; Live.thumbs.delete(id); break; }
       const note = toastHold('Картинка отправляется…');
-      const ok = await Live.imput(id, (k, m) => { note.textContent = 'Картинка отправляется: ' + k + ' из ' + m; }); note.remove();
-      if (!ok) {
-        if (it) {                                // уже стояла на доске с уменьшенной копией — убираем
-          BV.gundo = BV.gundo.filter(u => !(u.k === 'del' && u.it && u.it.id === it.id));
-          if (HOSTED && Live.pub) Live.gop({ k: 'del', b: b.id, it: { id: it.id } });
-          else { b.items = b.items.filter(x => x.id !== it.id); Live.pend = Live.pend.filter(o => !(o.k === 'add' && o.it && o.it.id === it.id)); if (BV.b === b && $('#board')) boardDraw(); }
+      const dt = th ? await Live.thput(id, th) : 0;         // уменьшенная копия — всем; по ней же видно, какая сейчас связь
+      /* Медленная связь: полная картинка шла бы минуту и дольше. Ужимаем её так, чтобы уложиться примерно в 15 секунд. */
+      let light = 0;
+      if (dt && Live.picSpeed && data.startsWith('data:image/jpeg')) {
+        const budget = Math.max(60000, Math.min(400000, Live.picSpeed * 15)); let cur = data;
+        for (const [mx, q] of [[1600, 0.7], [1360, 0.7], [1100, 0.68], [900, 0.62], [760, 0.56]]) {
+          if (cur.length <= budget) break;
+          try { const d2 = await reencode(data, mx, q); if (WIRE_IMG.test(d2) && d2.length < cur.length) { cur = d2; light = mx; } } catch (e) { break; }
         }
-        delete IMG[id]; Live.thumbs.delete(id);
-        toast(it ? 'Картинка не дошла до ведущего и убрана с доски. Проверьте связь и попробуйте ещё раз.' : 'Картинка не дошла до ведущего. Проверьте связь и попробуйте ещё раз.', 6000); break;
+        if (cur !== data && IMG[id] === data) { IMG[id] = data = cur; imgShown(id); }
       }
-      if (!it) { if (!$('#board') || boardRO()) { lost(); break; } await boardPlace(id, at, n++); }
-      toast('Картинка добавлена', 1600);
+      const head = light ? 'Связь медленная, картинка уменьшена до ' + light + ' точек: ' : 'Картинка отправляется: ';
+      if (light) note.textContent = head + '…';
+      const ok = await Live.imput(id, (k, m) => { note.textContent = head + k + ' из ' + m; }); note.remove();
+      if (!ok) {                                 // не дошла: убираем с доски
+        BV.gundo = BV.gundo.filter(u => !(u.k === 'del' && u.it && u.it.id === it.id));
+        if (HOSTED && Live.pub) Live.gop({ k: 'del', b: b.id, it: { id: it.id } });
+        else { b.items = b.items.filter(x => x.id !== it.id); Live.pend = Live.pend.filter(o => !(o.k === 'add' && o.it && o.it.id === it.id)); if (BV.b === b && $('#board')) boardDraw(); }
+        delete IMG[id]; Live.thumbs.delete(id);
+        toast('Картинка не дошла до ведущего и убрана с доски. Проверьте связь и попробуйте ещё раз.', 6000); break;
+      }
+      if (b.items.some(x => x.id === it.id) || BV.b !== b) toast('Картинка добавлена', 1600);
+      else if (Live.hostBv !== BUILD) toast('Картинка не встала на доску: у ведущего открыта другая версия сайта. Пусть ведущий обновит страницу.', 7000);
     }
-  } finally { BV.sending = false; }
+  } finally { BV.sending = false; q.length = 0; }
 }
 async function boardAddFiles(files, at) {
   if (!$('#board')) return;
@@ -4115,7 +4133,7 @@ const Live = {
      s — линии по запросу, th — уменьшенная копия новой картинки, saved — журнал сохранён (зрители загружают свежую версию),
      hi и need — просьбы зрителя. Скрытые доски не рассылаются. */
   clock() { this._clock = Math.max(Date.now(), this._clock + 1); return this._clock; },
-  bmsg(m) { if (OWNER && m.t === 'host') { m.hk = Hack.on ? 1 : 0; this.hostSent = Date.now(); } if (this.pub) this.pub(JSON.stringify({ ...m, v: 2, u: this.me, o: OWNER ? 1 : 0 }), true); },
+  bmsg(m) { if (OWNER && m.t === 'host') { m.hk = Hack.on ? 1 : 0; m.pr = this.picMask(); m.bv = BUILD; this.hostSent = Date.now(); } if (this.pub) this.pub(JSON.stringify({ ...m, v: 2, u: this.me, o: OWNER ? 1 : 0 }), true); },
   canPub(b) { return !!this.pub && !!b && S.boards.includes(b) && (OWNER ? !b.secret : READONLY && HOSTED); },
   pubBoard(b) { return OWNER && !!this.pub && !!b && !b.secret && S.boards.includes(b); },
   bstate(b) {
@@ -4154,7 +4172,7 @@ const Live = {
   },
   async bthumb(id, b = BV.b, any) {            // any — картинка не с доски: портрет или жетон
     if (!(any ? this.pub : this.pubBoard(b)) || !IMG[id] || (S.files && S.files[id] && !S.files[id].priv)) return;
-    try { const d = await this.shrink(id, 420, 0.55); if (d.length < 120000) this.bmsg({ t: 'th', img: id, d }); }
+    try { let d = await this.shrink(id, 420, 0.55); if (d.length > 30000) d = await this.shrink(id, 320, 0.5); if (d.length < 120000) await this.thput(id, d); }
     catch (e) { /* без уменьшенной копии зритель увидит рамку, а картинку — после сохранения */ }
   },
   saved(info) {
@@ -4187,7 +4205,6 @@ const Live = {
     if (add.length) this.bmsg({ t: 's', b: b.id, add });
   },
   brecv(p) {
-    if (p && p.t === 'im') return this.imin(p);
     if (!p || p.v !== 2 || typeof p.t !== 'string' || typeof p.u !== 'string' || !/^[a-z0-9]{1,40}$/.test(p.u) || p.u === this.me || !S) return;
     if (OWNER) {
       if (p.o) return;                                   // вторая вкладка самого ведущего
@@ -4202,10 +4219,10 @@ const Live = {
     if (p.hk !== undefined) Hack.remote(!!p.hk);          // «взлом» включён или выключен ведущим
     if (p.t === 'hkp') return Hack.kick(typeof p.n === 'string' ? p.n.slice(0, 40) : '');   // «рывок»
     if (p.t === 'saved') { if (/^[0-9a-f]{40}$/.test(p.sha) && +p.at > (SHARED_AT || 0)) refreshViewer(false, p.sha); return; }
-    if (p.t === 'th') {
-      if (typeof p.img !== 'string' || typeof p.d !== 'string' || !/^data:image\/(webp|jpeg|png);base64,[A-Za-z0-9+/=]+$/.test(p.d) || p.d.length > 130000 || IMG[p.img]) return;
-      IMG[p.img] = p.d; this.thumbs.add(p.img); imgShown(p.img); return;
-    }
+    if (p.t === 'host' && Number.isInteger(p.pr)) this.hostPr = p.pr;   // через какие серверы ведущий принимает картинки
+    if (p.t === 'host') this.hostBv = p.bv;
+    if (p.t === 'host' && READONLY && p.bv !== BUILD && !this.bvTold) { this.bvTold = true; toast('У вас и у ведущего открыты разные версии сайта — картинки и надписи могут не доходить. Обновите страницу (на компьютере Ctrl+F5); если не поможет, пусть страницу обновит ведущий.', 12000); }
+    if (p.t === 'th') return this.thin(p);
     if (p.t === 'imneed') return this.imneed(p);
     if (p.t === 'imok') { if (typeof p.img === 'string') { this.imOk.add(p.img); if (this.imOk.size > 200) this.imOk = new Set([...this.imOk].slice(-100)); } return; }
     if (p.t === 'ch') return this.chrecv(p);
@@ -4287,10 +4304,10 @@ const Live = {
     const tell = () => document.hidden ? this.bsend(b, true) : this.bstate(b);
     const mine = p.k !== 'del' || this.gadd.has(String(p.it && p.it.id));   // убрать можно только то, что положил игрок
     const im = p.k === 'add' && p.it && typeof p.it.img === 'string' && /^[A-Za-z0-9_-]{6,40}$/.test(p.it.img) ? p.it.img : null;
-    const small = !!im && !IMG[im] && typeof p.th === 'string' && p.th.length < 130000 && WIRE_IMG.test(p.th);
-    if (small) { IMG[im] = p.th; this.part.set(im, Date.now()); }           // пока показываем уменьшенную копию, полная уже в пути
-    if (!mine || !applyOp(b, p)) { if (small) { delete IMG[im]; this.part.delete(im); } if (cur) BV.undo.pop(); return tell(); }
-    if (p.k === 'add') { this.gadd.add(p.it.id); if (small) this.bmsg({ t: 'th', img: im, d: p.th }); else if (im) this.bthumb(im, b); }
+    const wait = !!im && !IMG[im] && this.part.size < 12, small = wait && typeof p.th === 'string' && p.th.length < 130000 && WIRE_IMG.test(p.th);
+    if (wait) { IMG[im] = small ? p.th : BLANK_IMG; this.part.set(im, Date.now()); }   // самой картинки ещё нет: место под неё занято, уменьшенная копия и полная уже в пути
+    if (!mine || !applyOp(b, p)) { if (wait) { delete IMG[im]; this.part.delete(im); } if (cur) BV.undo.pop(); return tell(); }
+    if (p.k === 'add') { this.gadd.add(p.it.id); if (small) this.thput(im, p.th); else if (im && this.part.has(im)) this.part.set(im, Date.now()); else if (im) this.bthumb(im, b); }   // есть только копия или вовсе ничего — ждём полную
     if (p.k === 'del' && this.part.size) this.partBusy();
     b.updatedAt = Date.now(); save(5000); if (cur) boardDraw(); tell();
   },
@@ -4333,7 +4350,7 @@ const Live = {
      Пока у ведущего только уменьшенная копия (part), журнал не сохраняется: иначе на сайт попала бы она.
      Ведущий кладёт картинку: уменьшенная копия (th) и следом чёткая (до 1600 точек) — тем же путём.
      После сохранения журнала все переходят на файл с сайта. */
-  imRx: new Map(), imOk: new Set(), imW: new Map(), part: new Map(), gadd: new Set(), shNew: new Set(), picC: [],
+  imRx: new Map(), imOk: new Set(), imW: new Map(), imTx: new Map(), picSpeed: 0, hostPr: 0, part: new Map(), part0: new Map(), gadd: new Set(), shNew: new Set(), picC: [],
   link(i, onmsg) {
     if (!window.WebSocket || !window.TextEncoder) return null;
     const te = new TextEncoder(), td = new TextDecoder(), topic = 'cjr/' + this.room() + '/u';
@@ -4372,10 +4389,69 @@ const Live = {
     return c;
   },
   picOpen(i) {                   // соединение для картинок; само восстанавливается
-    const again = () => setTimeout(() => this.picOpen(i), 6000);
-    const c = this.link(i, m => this.imin(m));
+    const again = () => setTimeout(() => this.picOpen(i), 15000);
+    const c = this.link(i, m => this.picin(m));
     this.picC[i] = c; if (!c) return again();
-    c.onDown = again;
+    c.i = i; c.onDown = again;
+  },
+  picMask() { let m = 0; this.picC.forEach((c, i) => { if (c && c.ok && c.ws.readyState === 1) m |= 1 << i; }); return m; },
+  /* Всё, что приходит по соединениям для картинок: части, уменьшенные копии и собственное эхо (оно служит подтверждением) */
+  picin(p) {
+    if (!p || p.v !== 2 || typeof p.u !== 'string' || typeof p.t !== 'string' || !S) return;
+    if (p.u === this.me) { const w = this.imW.get(p.t === 'im' ? p.img + ':' + p.i : p.t + ':' + p.img); if (w) w(); return; }
+    if (p.t === 'im') return this.imin(p);
+    if (p.t === 'th') return this.thin(p);
+    if (p.t === 'imend') return this.imend(p);
+  },
+  /* Одно сообщение по соединению для картинок: через ОДИН сервер, с ожиданием собственного эха; нет эха — через другой.
+     ВАЖНО: в обычный канал (линии, движения, состояние) части картинок не отправляются никогда. В просьбе 122 они туда
+     попадали при повторах, и на медленной связи после первой же картинки переставало ходить всё. Возвращает время в мс или 0. */
+  async picPut(msg, key, tmo, okId) {
+    const text = JSON.stringify({ ...msg, v: 2, u: this.me, o: OWNER ? 1 : 0 });
+    for (let a = 0; a < 4; a++) {
+      if (!this.pub || (READONLY && !HOSTED)) return 0;
+      let list = this.picC.filter(c => c && c.ok && c.ws.readyState === 1 && c.ws.bufferedAmount < 70000);
+      const pref = READONLY && this.hostPr ? list.filter(c => this.hostPr & (1 << c.i)) : list; if (pref.length) list = pref;   // тот сервер, который слышит ведущий
+      const cost = x => ((x.fly || 0) + 1) * (x.rt || 150) + (x.bad || 0) * 1500;   // быстрый сервер нагружаем больше; несколько частей сразу расходятся по разным: один сервер придерживает большой поток
+      list.sort((x, y) => cost(x) - cost(y));
+      const c = list[0];
+      if (!c) { await sleep(1500); continue; }
+      const t0 = Date.now(), lim = (tmo || this.picTmo(text.length)) * (a ? 2.5 : 1); let hit = false; this.imW.set(key, () => { hit = true; });
+      try { c.send(text); } catch (e) { c.bad = (c.bad || 0) + 2; this.imW.delete(key); continue; }
+      c.fly = (c.fly || 0) + 1;
+      while (!hit && Date.now() - t0 < lim && !(okId && this.imOk.has(okId)) && c.ws.readyState === 1) await sleep(25);
+      c.fly--; this.imW.delete(key);
+      if (hit || (okId && this.imOk.has(okId))) {
+        const dt = Math.max(1, Date.now() - t0); c.bad = Math.max(0, (c.bad || 0) - 0.25);
+        if (hit) c.rt = c.rt ? c.rt * 0.6 + dt * 0.4 : dt;
+        if (hit && text.length >= 3000) { const v = text.length * 1000 / Math.max(50, dt - 150); this.picSpeed = this.picSpeed && v > this.picSpeed ? this.picSpeed * 0.6 + v * 0.4 : v; }   // знаков в секунду, туда и обратно; вниз — сразу, вверх — постепенно
+        return dt;
+      }
+      c.bad = (c.bad || 0) + 1;
+      if (text.length >= 3000) this.picSpeed = Math.min(this.picSpeed || 1e9, text.length * 1000 / lim);   // эха нет: связь медленнее, чем казалось
+    }
+    return 0;
+  },
+  /* Сколько ждать эха: втрое дольше, чем часть идёт при нынешней скорости, но не меньше 1,6 с. Серверы изредка теряют часть — тогда она уходит ещё раз (ждём уже в 2,5 раза дольше). */
+  picTmo(len) { const v = this.picSpeed; return v ? Math.min(20000, Math.max(1600, Math.round(3000 * len / v))) : 6000; },
+  /* Уменьшенная копия — всем, по соединению для картинок; по ней же меряется скорость связи.
+     Если таких соединений нет совсем, небольшая копия идёт обычным путём, как было до просьбы 122. */
+  async thput(id, d) {
+    if (!this.pub || typeof d !== 'string') return 0;
+    if (!this.picMask()) await Promise.race([Promise.all(this.picC.map(c => c ? c.ready : null)), sleep(3000)]);
+    if (!this.picMask()) { if (d.length <= 40000) { this.bmsg({ t: 'th', img: id, d }); return 1; } return 0; }
+    const dt = await this.picPut({ t: 'th', img: id, d }, 'th:' + id, 15000);
+    if (dt && this.picSpeed >= 40000) {                      // связь быстрая: копию и через второй сервер — тем, кто связан только с ним
+      const text = JSON.stringify({ t: 'th', img: id, d, v: 2, u: this.me, o: OWNER ? 1 : 0 }), best = this.picC.filter(c => c && c.ok).sort((x, y) => (x.bad || 0) - (y.bad || 0))[0];
+      for (const c of this.picC) if (c && c !== best && c.ok && c.ws.readyState === 1 && c.ws.bufferedAmount < 70000) try { c.send(text); } catch (e) {}
+    }
+    return dt;
+  },
+  thin(p) {                      // пришла уменьшенная копия
+    if (typeof p.img !== 'string' || !/^[A-Za-z0-9_-]{6,40}$/.test(p.img) || typeof p.d !== 'string' || p.d.length > 130000 || !WIRE_IMG.test(p.d) || (IMG[p.img] && IMG[p.img] !== BLANK_IMG)) return;
+    if (OWNER) { if (p.o || (!IMG[p.img] && this.part.size >= 12)) return; IMG[p.img] = p.d; this.part.set(p.img, Date.now()); imgShown(p.img); return; }   // от игрока: полная картинка ещё в пути
+    if (!READONLY) return;
+    IMG[p.img] = p.d; this.thumbs.add(p.img); imgShown(p.img);
   },
   /* Уменьшенная копия картинки: для показа «сразу» и для отправки чёткой, но не огромной */
   async shrink(id, max, q) {
@@ -4387,46 +4463,55 @@ const Live = {
     if (!d.startsWith('data:image/webp')) { g.fillStyle = '#1c1b26'; g.fillRect(0, 0, c.width, c.height); g.drawImage(im, 0, 0, c.width, c.height); d = c.toDataURL('image/jpeg', q); }
     return d;
   },
-  /* Отправка картинки по частям. Картинки идут по очереди, части одной картинки — по три сразу. */
-  imcast(id, data, prog, wide) { const run = () => this.imcast1(id, data, prog, wide); this.imQ = (this.imQ || Promise.resolve()).then(run, run); return this.imQ; },
-  async imcast1(id, data, prog, wide) {   // wide — слать ещё и по обычному соединению (вторая попытка: отдельное, видимо, не работает у ведущего)
-    const N = 32000, n = Math.ceil(data.length / N); if (!this.pub || n < 1 || n > 60) return false;
-    if (!this.picC.some(c => c && c.ok)) await Promise.race([Promise.all(this.picC.map(c => c ? c.ready : null)), sleep(2500)]);
-    let next = 0, done = 0, fail = false;
-    const good = c => c && c.ok && c.ws.readyState === 1 && c.ws.bufferedAmount < 200000;
-    const one = async i => {
-      const text = JSON.stringify({ t: 'im', img: id, i, n, d: data.slice(i * N, (i + 1) * N), v: 2, u: this.me, o: OWNER ? 1 : 0 }), key = id + ':' + i;
-      for (let a = 0; a < 4; a++) {
-        if (!this.conn.some(Boolean) || (READONLY && !HOSTED)) return false;
-        const got = new Promise(res => this.imW.set(key, () => res(true)));
-        let sent = 0;
-        for (const c of this.picC) if (good(c)) try { c.send(text); sent++; } catch (e) {}   // через оба сервера: кто-то из получателей может быть связан только с одним
-        if (!sent || a >= 2 || wide) for (const c of this.conn) if (c && c.ws.bufferedAmount < 200000) try { c.send(text, true); sent++; } catch (e) {}   // запасной путь — обычное соединение
-        const wait = async () => { for (let k = 0; k < (a ? 40 : 16); k++) { await sleep(100); if (this.imOk.has(id)) return true; } return false; };   // ведущий уже собрал картинку — эхо можно не ждать
-        const ok = sent ? await Promise.race([got, wait()]) : await sleep(400).then(() => false);
-        this.imW.delete(key);
-        if (ok) return true;
-      }
-      return false;
-    };
-    const work = async () => { while (!fail && next < n) { const i = next++; if (await one(i)) { done++; if (prog) prog(done, n); } else fail = true; } };
-    await Promise.all([work(), work(), work()]);   // пять и шесть сразу пробовали — быстрее не выходит: серверы придерживают поток после первых ~400 000 знаков
+  /* Отправка картинки по частям. Картинки идут по очереди. Скорость подстраивается под связь: сначала одна часть,
+     и только если эхо возвращается быстро (до 0,45 с) — три сразу, до 1,1 с — две. На медленной связи части мельче (16 000 знаков). */
+  imcast(id, data, prog) { const run = () => this.imcast1(id, data, prog); this.imQ = (this.imQ || Promise.resolve()).then(run, run); return this.imQ; },
+  async imcast1(id, data, prog) {
+    if (!this.pub || typeof data !== 'string') return false;
+    if (!this.picMask()) await Promise.race([Promise.all(this.picC.map(c => c ? c.ready : null)), sleep(5000)]);
+    if (!this.picMask()) return false;
+    const v = this.picSpeed || 0, N = v >= 40000 || data.length > 900000 ? 32000 : 16000, n = Math.ceil(data.length / N);
+    if (n < 1 || n > 60) return false;
+    const tx = { data, N, n, fix: new Set(), fixing: false, at: Date.now() };
+    this.imTx.delete(id); this.imTx.set(id, tx); if (this.imTx.size > 6) this.imTx.delete(this.imTx.keys().next().value);
+    let next = 0, done = 0, fail = false, active = 0, par = 1;   // первая часть идёт одна: по ней видно, можно ли слать по три
+    await new Promise(res => {
+      const pump = () => {
+        if (this.imOk.has(id)) next = n;                    // ведущий уже собрал картинку
+        while (!fail && active < par && next < n) {
+          const i = next++; active++;
+          this.picPut({ t: 'im', img: id, i, n, d: data.slice(i * N, (i + 1) * N) }, id + ':' + i, 0, id).then(dt => {
+            active--; tx.at = Date.now();
+            if (!dt) fail = true; else { done++; if (prog) prog(done, n); par = dt < 450 ? 3 : dt < 1100 ? 2 : 1; }
+            pump();
+          });
+        }
+        if (!active && (fail || next >= n)) res();
+      };
+      pump();
+    });
+    tx.at = Date.now();
     return !fail;
   },
-  /* Игрок: передать картинку ведущему и дождаться, пока он её сохранит у себя. Если подтверждения нет, части шлются ещё раз. */
+  /* Игрок: передать картинку ведущему и дождаться, пока он её сохранит у себя. Потерянные части ведущий просит сам (imneed). */
   async imput(id, prog) {
     const data = IMG[id];
     if (!READONLY || !HOSTED || !this.pub || typeof data !== 'string' || data.length > 1500000 || !WIRE_IMG.test(data)) return false;
-    for (let pass = 0; pass < 3; pass++) {
-      if (!(await this.imcast(id, data, pass ? null : prog, pass > 0))) return false;
-      for (let k = 0; k < (pass ? 60 : 35) && !this.imOk.has(id); k++) await sleep(100);
-      if (this.imOk.has(id)) return true;
+    if (!(await this.imcast(id, data, prog))) return false;
+    const tx = this.imTx.get(id), t0 = Date.now(); if (!tx) return this.imOk.has(id);
+    let told = t0 - 2500;                                   // обычно подтверждение приходит само; через полторы секунды спрашиваем
+    while (!this.imOk.has(id)) {
+      const now = Date.now();
+      if (!HOSTED || now - t0 > 150000 || (!tx.fixing && now - Math.max(t0, tx.at) > 14000)) return false;
+      if (!tx.fixing && now - told > 4000) { told = now; this.picPut({ t: 'imend', img: id, n: tx.n }, 'imend:' + id, 5000); }   // «всё отправлено»: ведущий проверит, чего не хватает
+      await sleep(100);
     }
-    return false;
+    return true;
   },
-  /* Ведущий: чёткая копия своей новой картинки — всем, не дожидаясь сохранения журнала */
+  /* Ведущий: чёткая копия своей новой картинки — всем, не дожидаясь сохранения журнала. Только на быстрой связи:
+     на медленной игроки возьмут настоящую картинку с сайта после сохранения, как раньше. */
   async bcast(id, b = BV.b) {
-    if (!OWNER || !this.pubBoard(b) || !IMG[id] || (S.files && S.files[id] && !S.files[id].priv)) return;
+    if (!OWNER || !(this.picSpeed >= 25000) || !this.pubBoard(b) || !IMG[id] || (S.files && S.files[id] && !S.files[id].priv)) return;
     try {
       let d = IMG[id];
       if (!WIRE_IMG.test(d) || d.length > 400000) d = await this.shrink(id, 1600, 0.78);
@@ -4446,56 +4531,74 @@ const Live = {
     const now = Date.now(); for (const [k, r] of this.imRx) if (now - r.at > 60000) this.imRx.delete(k);
     let r = this.imRx.get(id);
     if (!r) { if (this.imRx.size >= 8) return; r = { u: p.u, n, parts: new Array(n).fill(null), got: 0, at: now }; this.imRx.set(id, r); }
-    if (r.u !== p.u || r.n !== n) return;
+    if (r.u === p.u && r.n !== n) { r = { u: p.u, n, parts: new Array(n).fill(null), got: 0, at: now }; this.imRx.set(id, r); }   // тот же отправитель начал заново, другими частями
+    if (r.u !== p.u) return;
     if (r.parts[i] === null) { r.parts[i] = p.d; r.got++; } r.at = now;
-    if (r.got < n) { if (OWNER && !r.timer) r.timer = setTimeout(() => { r.timer = 0; this.imcheck(); }, 450); return; }
+    if (OWNER && this.part.has(id)) this.part.set(id, now);          // картинка идёт — срок ожидания отодвигается
+    if (r.got < n) return;
     this.imRx.delete(id); const d = r.parts.join('');
     if (d.length > 1500000 || !WIRE_IMG.test(d)) return;
     if (OWNER) {
-      const was = this.part.delete(id);
+      const was = this.part.delete(id); this.part0.delete(id);
       IMG[id] = d; IMKEEP.set(id, now); Store.put('img', id, d); this.bmsg({ t: 'imok', img: id });
       if (was) { imgShown(id); save(5000); }
       return;
     }
     IMG[id] = d; this.thumbs.add(id); imgShown(id);
   },
-  /* Ведущий: часть картинки потерялась в пути — просим у игрока только её, а не всю картинку заново */
+  /* Ведущий: части картинки не хватает — просим у игрока только её. Спрашиваем, когда игрок сказал «всё отправлено» (imend)
+     или когда части не приходят 15 секунд; раньше нельзя — на медленной связи между частями проходят секунды. */
+  imask(id) {
+    const r = this.imRx.get(id); if (!OWNER || !r || r.got >= r.n || (r.asks || 0) >= 10) return;
+    const miss = []; for (let i = 0; i < r.n && miss.length < 24; i++) if (r.parts[i] === null) miss.push(i);
+    r.asked = Date.now(); r.asks = (r.asks || 0) + 1; this.bmsg({ t: 'imneed', img: id, to: r.u, n: r.n, miss, pr: this.picMask() });
+  },
   imcheck() {
     if (!OWNER) return; const now = Date.now();
-    for (const [id, r] of this.imRx) {
-      if (r.got >= r.n) continue;
-      if (now - r.at < 800 || now - (r.asked || 0) < 1400) { if (!r.timer && (r.asks || 0) < 8) r.timer = setTimeout(() => { r.timer = 0; this.imcheck(); }, 450); continue; }
-      if ((r.asks || 0) >= 8) continue;
-      const miss = []; for (let i = 0; i < r.n && miss.length < 24; i++) if (r.parts[i] === null) miss.push(i);
-      r.asked = now; r.asks = (r.asks || 0) + 1; this.bmsg({ t: 'imneed', img: id, to: r.u, n: r.n, miss });
-      if (!r.timer) r.timer = setTimeout(() => { r.timer = 0; this.imcheck(); }, 1450);
-    }
+    for (const [id, r] of this.imRx) if (r.got < r.n && now - r.at > 15000 && now - (r.asked || 0) > 15000) this.imask(id);
   },
-  imneed(p) {                    // игрок: ведущему не хватает частей — шлём их ещё раз всеми путями
-    const d = typeof p.img === 'string' ? IMG[p.img] : null, N = 32000, n = +p.n;
-    if (!p.o || p.to !== this.me || typeof d !== 'string' || !Array.isArray(p.miss) || Math.ceil(d.length / N) !== n) return;
-    const few = p.miss.length <= 4;                                  // много частей в обычный канал не пускаем: он для линий и движений
-    for (const i of p.miss.slice(0, 24)) {
-      if (!Number.isInteger(i) || i < 0 || i >= n) continue;
-      const text = JSON.stringify({ t: 'im', img: p.img, i, n, d: d.slice(i * N, (i + 1) * N), v: 2, u: this.me, o: 0 });
-      let sent = 0;
-      for (const c of this.picC) if (c && c.ok && c.ws.readyState === 1) try { c.send(text); sent++; } catch (e) {}
-      if (few || !sent) for (const c of this.conn) if (c) try { c.send(text, true); } catch (e) {}
-    }
+  imend(p) {                     // игрок: «я отправил все части»
+    if (!OWNER || p.o || typeof p.img !== 'string' || !/^[A-Za-z0-9_-]{6,40}$/.test(p.img) || !/^[a-z0-9]{1,40}$/.test(p.u)) return;
+    const id = p.img, n = +p.n, now = Date.now();
+    if (IMG[id] && !this.part.has(id)) return this.bmsg({ t: 'imok', img: id });      // уже есть целиком: игрок не услышал подтверждение
+    if (!Number.isInteger(n) || n < 1 || n > 60) return;
+    let r = this.imRx.get(id);
+    if (!r) { if (this.imRx.size >= 8) return; r = { u: p.u, n, parts: new Array(n).fill(null), got: 0, at: now }; this.imRx.set(id, r); }   // не дошло ни одной части
+    if (r.u !== p.u || r.n !== n || now - (r.asked || 0) < 2500) return;
+    r.at = now; this.imask(id);
   },
-  /* Ведущий: картинки игроков, от которых пока есть только уменьшенная копия */
+  imneed(p) {                    // игрок: ведущему не хватает частей — досылаем их по одной, по соединению для картинок
+    const tx = typeof p.img === 'string' ? this.imTx.get(p.img) : null;
+    if (!p.o || p.to !== this.me || !tx || !Array.isArray(p.miss) || +p.n !== tx.n) return;
+    if (Number.isInteger(p.pr)) this.hostPr = p.pr;
+    tx.at = Date.now();
+    for (const i of p.miss.slice(0, 24)) if (Number.isInteger(i) && i >= 0 && i < tx.n) tx.fix.add(i);
+    if (!tx.fixing && tx.fix.size) this.imfix(p.img, tx);
+  },
+  async imfix(id, tx) {
+    tx.fixing = true;
+    try {
+      while (tx.fix.size && !this.imOk.has(id)) {
+        const i = tx.fix.values().next().value; tx.fix.delete(i);
+        await this.picPut({ t: 'im', img: id, i, n: tx.n, d: tx.data.slice(i * tx.N, (i + 1) * tx.N) }, id + ':' + i, 0, id); tx.at = Date.now();
+      }
+    } finally { tx.fixing = false; tx.at = Date.now(); }
+  },
+  /* Ведущий: картинки игроков, от которых пока есть только уменьшенная копия или вовсе ничего. Срок — минута без единой новой части
+     (каждая пришедшая часть отодвигает его) и четыре минуты всего. Пока такие есть, сохранение журнала ждёт (Sync.run). */
   partBusy() {
-    const now = Date.now();
+    const now = Date.now(); let busy = false;
     for (const [id, t] of this.part) {
       const used = S.boards.some(b => b.items.some(it => it.img === id));
-      if (used && now - t < 45000) continue;
-      this.part.delete(id); delete IMG[id];
+      if (!this.part0.has(id)) this.part0.set(id, t);
+      if (now - t < (used ? 60000 : 20000) && now - this.part0.get(id) < 240000) { if (used) busy = true; continue; }   // и не дольше четырёх минут всего: сохранение журнала не должно ждать вечно
+      this.part.delete(id); this.part0.delete(id); delete IMG[id];
       if (used) for (const b of S.boards) {            // полная картинка так и не пришла — убираем её с доски
         const k = b.items.length; b.items = b.items.filter(it => it.img !== id); if (b.items.length === k) continue;
         b.updatedAt = now; if (this.onBoard(b) && BV.b === b) { if (BV.sel && !b.items.some(it => it.id === BV.sel)) BV.sel = null; boardDraw(); } this.bstate(b);
       }
     }
-    return this.part.size > 0;
+    return busy;
   },
   /* ── Персонажи в прямом эфире: игрок шлёт ведущему открытые поля, ведущий рассылает персонажа (без скрытого) ── */
   chDirty: new Map(), chAt: {}, chkeep: {}, cfDirty: new Map(), cfAt: {}, cfkeep: {},
@@ -4515,7 +4618,7 @@ const Live = {
     this.gsend(op, 'Ведущий не подтвердил изменение персонажа. Проверьте связь и сохраните ещё раз.'); chShown(c); return true;
   },
   chpub(c) { if (OWNER && this.pub && this.pubChar(c)) { this.chDirty.set(c.id, Date.now()); this.chtell(c); } },
-  chtell(c) { const id = c.id; if (c.portrait && IMG[c.portrait]) this.bthumb(c.portrait, null, true).then(() => this.chsend(id)); else this.chsend(id); },   // сначала уменьшенный портрет, чтобы у игроков он был к приходу персонажа
+  chtell(c) { const id = c.id; if (c.portrait && IMG[c.portrait]) Promise.race([this.bthumb(c.portrait, null, true), sleep(2500)]).then(() => this.chsend(id)); else this.chsend(id); },   // сначала уменьшенный портрет, чтобы у игроков он был к приходу персонажа
   chsend(id) {
     const c = S.characters.find(x => x.id === id); if (!this.pub || !this.pubChar(c)) return;
     this.bmsg({ t: 'ch', at: this.clock(), pc: c.id, c: c.campaignId, f: cleanChar(c), bc: S.boards.filter(b => !b.secret && Array.isArray(b.cast) && b.cast.includes(c.id)).map(b => b.id).slice(0, 40), ack: this.acks.slice(-40) });
@@ -4555,7 +4658,7 @@ const Live = {
   fpub(c) { if (OWNER && this.pub && c) { this.cfDirty.set(c.id, Date.now()); this.cftell(c.id); } },
   cftell(id) {                  // сначала уменьшенная копия жетона, потом сообщение о смене
     const c = S.campaigns.find(k => k.id === id); if (!c) return;
-    if (c.fateImg && IMG[c.fateImg]) this.bthumb(c.fateImg, null, true).then(() => this.cfsend(id)); else this.cfsend(id);
+    if (c.fateImg && IMG[c.fateImg]) Promise.race([this.bthumb(c.fateImg, null, true), sleep(2500)]).then(() => this.cfsend(id)); else this.cfsend(id);
   },
   cfsend(id) { const c = S.campaigns.find(k => k.id === id); if (this.pub && c) this.bmsg({ t: 'cf', at: this.clock(), c: c.id, img: c.fateImg || null, ack: this.acks.slice(-40) }); },
   cfrecv(p, quiet) {
